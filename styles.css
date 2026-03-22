@@ -1,0 +1,187 @@
+:root {
+  color-scheme: light;
+  --bg: #f5f7fb;
+  --surface: #ffffff;
+  --text: #172033;
+  --muted: #60708f;
+  --primary: #3b82f6;
+  --primary-dark: #1d4ed8;
+  --border: #d9e1ef;
+  --danger: #dc2626;
+  --warning: #f59e0b;
+  --success: #16a34a;
+  --shadow: 0 18px 40px rgba(25, 50, 90, 0.08);
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+}
+button, input, select, textarea {
+  font: inherit;
+}
+.app-shell {
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: 16px 16px 96px;
+}
+.topbar, .section-heading, .merchant-meta, .review-row, .hero-actions, .bottom-nav {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+.topbar { margin-bottom: 16px; }
+.eyebrow {
+  margin: 0 0 4px;
+  color: var(--primary-dark);
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+}
+h1, h2, h3, p { margin: 0; }
+.content { display: grid; gap: 16px; }
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  box-shadow: var(--shadow);
+  padding: 16px;
+}
+.hero {
+  display: grid;
+  gap: 16px;
+}
+.hero h2 { margin-bottom: 8px; }
+.primary, .secondary, .chip {
+  border: none;
+  border-radius: 999px;
+  padding: 10px 16px;
+  cursor: pointer;
+}
+.primary { background: var(--primary); color: white; }
+.secondary { background: #e8f0ff; color: var(--primary-dark); }
+.filters { display: grid; gap: 12px; }
+input, select, textarea {
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 12px 14px;
+  background: #fbfcff;
+}
+.stats-grid, .merchant-list, .panel-stack, .review-list, .photo-strip {
+  display: grid;
+  gap: 12px;
+}
+.stats-grid { grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); }
+.stat {
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 12px;
+  background: linear-gradient(180deg, #ffffff, #f7faff);
+}
+.merchant-card {
+  display: grid;
+  gap: 12px;
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  overflow: hidden;
+  background: var(--surface);
+}
+.merchant-card img, .detail-cover {
+  width: 100%;
+  height: 180px;
+  object-fit: cover;
+  background: #dbe6f8;
+}
+.merchant-content { padding: 0 14px 14px; display: grid; gap: 8px; }
+.merchant-meta { color: var(--muted); font-size: 14px; }
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: #eff6ff;
+  color: var(--primary-dark);
+  font-size: 12px;
+  font-weight: 700;
+}
+.empty-state {
+  min-height: 160px;
+  display: grid;
+  place-items: center;
+  color: var(--muted);
+  text-align: center;
+}
+.photo-strip {
+  grid-template-columns: repeat(auto-fit, minmax(96px, 1fr));
+}
+.photo-strip img {
+  width: 100%;
+  aspect-ratio: 1;
+  object-fit: cover;
+  border-radius: 14px;
+}
+.review-card {
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 12px;
+  display: grid;
+  gap: 8px;
+}
+.review-row small, .muted, .hint { color: var(--muted); }
+.grid-2 {
+  display: grid;
+  gap: 16px;
+}
+.status-warning { color: var(--warning); }
+.status-danger { color: var(--danger); }
+.status-success { color: var(--success); }
+.bottom-nav {
+  position: fixed;
+  left: 50%;
+  bottom: 16px;
+  transform: translateX(-50%);
+  background: rgba(23, 32, 51, .92);
+  color: white;
+  padding: 8px;
+  border-radius: 999px;
+  width: min(420px, calc(100% - 32px));
+}
+.bottom-nav a {
+  flex: 1;
+  text-align: center;
+  color: rgba(255,255,255,.78);
+  text-decoration: none;
+  padding: 10px 14px;
+  border-radius: 999px;
+}
+.bottom-nav a.active { background: white; color: var(--text); }
+dialog {
+  border: none;
+  border-radius: 20px;
+  padding: 0;
+  width: min(92vw, 420px);
+}
+.dialog-form {
+  display: grid;
+  gap: 12px;
+  padding: 20px;
+}
+menu {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  padding: 0;
+  margin: 0;
+}
+@media (min-width: 720px) {
+  .grid-2 { grid-template-columns: 1fr 1fr; }
+  .hero { grid-template-columns: 1.5fr 1fr; align-items: center; }
+  .merchant-list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
