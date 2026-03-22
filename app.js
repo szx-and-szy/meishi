@@ -75,7 +75,9 @@ const els = {
   platformStats: document.getElementById('platformStats'),
   profilePanel: document.getElementById('profilePanel'),
   adminPanel: document.getElementById('adminPanel'),
+  topbar: document.getElementById('topbar'),
   foodView: document.getElementById('foodView'),
+  detailView: document.getElementById('detailView'),
   profileView: document.getElementById('profileView'),
   adminView: document.getElementById('adminView'),
   locationBar: document.getElementById('locationBar'),
@@ -94,14 +96,18 @@ function studentIdValid(studentId) {
 function setActiveView(view) {
   state.activeView = view;
   const isFoodView = view === 'food';
+  const isDetailView = view === 'detail';
   const isProfileView = view === 'profile';
   const isAdminView = view === 'admin';
+  const showFoodChrome = isFoodView;
+  els.topbar.classList.toggle('is-hidden', !showFoodChrome);
   els.foodView.classList.toggle('is-hidden', !isFoodView);
+  els.detailView.classList.toggle('is-hidden', !isDetailView);
   els.profileView.classList.toggle('is-hidden', !isProfileView);
   els.adminView.classList.toggle('is-hidden', !isAdminView);
-  els.locationBar.classList.toggle('is-hidden', !isFoodView);
-  els.searchInput.classList.toggle('is-hidden', !isFoodView);
-  els.foodTabButton.classList.toggle('active', isFoodView);
+  els.locationBar.classList.toggle('is-hidden', !showFoodChrome);
+  els.searchInput.classList.toggle('is-hidden', !showFoodChrome);
+  els.foodTabButton.classList.toggle('active', isFoodView || isDetailView);
   els.profileTabButton.classList.toggle('active', isProfileView || isAdminView);
 }
 
@@ -314,6 +320,7 @@ function requireLogin(actionName) {
 window.selectMerchant = (merchantId) => {
   state.selectedMerchantId = merchantId;
   renderDetail();
+  setActiveView('detail');
 };
 window.reportReview = (reviewId) => {
   if (!requireLogin('举报评价')) return;

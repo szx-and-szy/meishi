@@ -8,7 +8,7 @@
   </head>
   <body>
     <div class="app-shell">
-      <header class="topbar card">
+      <header id="topbar" class="topbar card">
         <input id="searchInput" type="search" placeholder="搜索商家名称" maxlength="20" />
         <label id="locationBar" class="location-picker">
           <span>位置</span>
@@ -25,15 +25,17 @@
           <section>
             <div class="section-heading">
               <h2>美食列表</h2>
-              <p>按贝叶斯评分排序</p>
             </div>
             <div id="merchantList" class="merchant-list"></div>
           </section>
+        </section>
 
+
+        <section id="detailView" class="view-panel panel-stack is-hidden" data-view="detail">
           <section class="card detail-panel">
             <div class="section-heading">
               <h2>商家详情</h2>
-              <p>含图片、评分统计、评价筛选与举报入口</p>
+              <button class="secondary" onclick="setActiveView('food')">返回美食</button>
             </div>
             <div id="merchantDetail" class="merchant-detail empty-state">
               请选择一家商家查看详情。
