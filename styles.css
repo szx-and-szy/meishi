@@ -28,7 +28,7 @@ button, input, select, textarea {
   margin: 0 auto;
   padding: 16px 16px 96px;
 }
-.topbar, .section-heading, .merchant-meta, .review-row, .profile-actions, .bottom-nav {
+.topbar, .section-heading, .merchant-meta, .review-row, .bottom-nav {
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -149,8 +149,11 @@ input, select, textarea {
 .status-danger { color: var(--danger); }
 .status-success { color: var(--success); }
 .profile-actions {
-  flex-wrap: wrap;
-  justify-content: flex-start;
+  display: grid;
+  gap: 12px;
+}
+.profile-actions button {
+  width: 100%;
 }
 .bottom-nav {
   position: fixed;
