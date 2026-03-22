@@ -206,16 +206,15 @@ function renderDetail() {
     .map(
       (review) => `
         <div class="review-card">
-          <div class="review-row">
+          <div class="review-row review-card-top">
             <strong>${review.avatar} ${review.user}</strong>
-            <small>${review.createdAt}</small>
+            <button class="report-button" onclick="reportReview(${review.id})">举报</button>
           </div>
           <div class="review-row">
             <span class="badge">${'★'.repeat(review.rating)}${'☆'.repeat(5 - review.rating)}</span>
-            <small class="${review.reportCount >= 20 ? 'status-warning' : 'muted'}">举报 ${review.reportCount}</small>
+            <small>${review.createdAt}</small>
           </div>
           <p>${review.content || '<span class="muted">用户未填写文字评价。</span>'}</p>
-          <button class="secondary" onclick="reportReview(${review.id})">举报评价</button>
         </div>
       `,
     )
@@ -234,7 +233,6 @@ function renderDetail() {
     <div class="merchant-meta">
       <span>贝叶斯评分 ${summary.bayes.toFixed(2)}</span>
       <span>评价数 ${summary.reviewCount}</span>
-      <span>封面图可由管理员修改</span>
     </div>
     <div class="photo-strip">${merchant.images
       .map((image, index) => `<img src="${image}" alt="${merchant.name} 图片 ${index + 1}" />`)

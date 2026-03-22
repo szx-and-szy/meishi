@@ -145,6 +145,15 @@ input, select, textarea {
   gap: 8px;
 }
 .review-row small, .muted, .hint { color: var(--muted); }
+.report-button {
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 4px 10px;
+  background: #f8fafc;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 12px;
+}
 .status-warning { color: var(--warning); }
 .status-danger { color: var(--danger); }
 .status-success { color: var(--success); }
