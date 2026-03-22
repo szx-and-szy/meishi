@@ -77,6 +77,7 @@ const els = {
   adminPanel: document.getElementById('adminPanel'),
   foodView: document.getElementById('foodView'),
   profileView: document.getElementById('profileView'),
+  locationBar: document.getElementById('locationBar'),
   foodTabButton: document.getElementById('foodTabButton'),
   profileTabButton: document.getElementById('profileTabButton'),
   authDialog: document.getElementById('authDialog'),
@@ -96,6 +97,7 @@ function setActiveView(view) {
   const isFoodView = view === 'food';
   els.foodView.classList.toggle('is-hidden', !isFoodView);
   els.profileView.classList.toggle('is-hidden', isFoodView);
+  els.locationBar.classList.toggle('is-hidden', !isFoodView);
   els.foodTabButton.classList.toggle('active', isFoodView);
   els.profileTabButton.classList.toggle('active', !isFoodView);
 }

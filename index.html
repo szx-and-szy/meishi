@@ -8,12 +8,13 @@
   </head>
   <body>
     <div class="app-shell">
-      <header class="topbar">
+      <header class="topbar card">
+        <input id="searchInput" type="search" placeholder="搜索商家名称" maxlength="20" />
         <div>
           <p class="eyebrow">校园餐饮点评</p>
           <h1>Meishi</h1>
         </div>
-        <label class="location-picker">
+        <label id="locationBar" class="location-picker">
           <span>位置</span>
           <select id="locationSelect"></select>
         </label>
@@ -36,7 +37,6 @@
           </section>
 
           <section class="card filters">
-            <input id="searchInput" type="search" placeholder="搜索商家名称" maxlength="20" />
             <div class="stats-grid" id="platformStats"></div>
           </section>
 

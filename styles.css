@@ -34,7 +34,21 @@ button, input, select, textarea {
   align-items: center;
   gap: 12px;
 }
-.topbar { margin-bottom: 16px; }
+.topbar {
+  position: fixed;
+  top: 16px;
+  left: 50%;
+  z-index: 10;
+  transform: translateX(-50%);
+  width: min(1080px, calc(100% - 32px));
+  margin-bottom: 16px;
+  flex-direction: column;
+  align-items: stretch;
+}
+.location-picker {
+  display: grid;
+  gap: 8px;
+}
 .eyebrow {
   margin: 0 0 4px;
   color: var(--primary-dark);
@@ -44,7 +58,10 @@ button, input, select, textarea {
   letter-spacing: .08em;
 }
 h1, h2, h3, p { margin: 0; }
-.content { position: relative; }
+.content {
+  position: relative;
+  padding-top: 200px;
+}
 .view-panel, .panel-stack { display: grid; gap: 16px; }
 .is-hidden { display: none; }
 .card {
@@ -137,10 +154,6 @@ input, select, textarea {
   gap: 8px;
 }
 .review-row small, .muted, .hint { color: var(--muted); }
-.grid-2 {
-  display: grid;
-  gap: 16px;
-}
 .status-warning { color: var(--warning); }
 .status-danger { color: var(--danger); }
 .status-success { color: var(--success); }
@@ -148,6 +161,7 @@ input, select, textarea {
   position: fixed;
   left: 50%;
   bottom: 16px;
+  z-index: 10;
   transform: translateX(-50%);
   background: rgba(23, 32, 51, .92);
   color: white;
@@ -185,7 +199,6 @@ menu {
   margin: 0;
 }
 @media (min-width: 720px) {
-  .grid-2 { grid-template-columns: 1fr 1fr; }
   .hero { grid-template-columns: 1.5fr 1fr; align-items: center; }
   .merchant-list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
