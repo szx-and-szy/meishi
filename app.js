@@ -72,7 +72,6 @@ const els = {
   searchInput: document.getElementById('searchInput'),
   merchantList: document.getElementById('merchantList'),
   merchantDetail: document.getElementById('merchantDetail'),
-  platformStats: document.getElementById('platformStats'),
   profilePanel: document.getElementById('profilePanel'),
   adminPanel: document.getElementById('adminPanel'),
   topbar: document.getElementById('topbar'),
@@ -148,20 +147,6 @@ function renderLocationOptions() {
   els.locationSelect.value = state.currentLocation;
 }
 
-function renderStats() {
-  const pendingMerchantCount = 3;
-  const queuedReports = merchants.flatMap((merchant) => merchant.reviews).filter((review) => review.reportCount >= 20).length;
-  const totalReviews = merchants.flatMap((merchant) => merchant.reviews).length;
-  const stats = [
-    ['平台均分', getPlatformAverage().toFixed(2)],
-    ['有效评价', totalReviews],
-    ['待审商家', pendingMerchantCount],
-    ['举报队列', queuedReports],
-  ];
-  els.platformStats.innerHTML = stats
-    .map(([label, value]) => `<div class="stat"><div class="eyebrow">${label}</div><strong>${value}</strong></div>`)
-    .join('');
-}
 
 function renderMerchants() {
   const filtered = getFilteredMerchants();
@@ -231,7 +216,6 @@ function renderDetail() {
       <span class="badge">总分 ${summary.average.toFixed(1)}</span>
     </div>
     <div class="merchant-meta">
-      <span>贝叶斯评分 ${summary.bayes.toFixed(2)}</span>
       <span>评价数 ${summary.reviewCount}</span>
     </div>
     <div class="photo-strip">${merchant.images
@@ -382,7 +366,6 @@ els.confirmLogin.addEventListener('click', (event) => {
 
 function init() {
   renderLocationOptions();
-  renderStats();
   renderMerchants();
   renderDetail();
   renderProfile();
