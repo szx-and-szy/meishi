@@ -163,12 +163,11 @@ function renderMerchants() {
           <div class="merchant-content">
             <div class="section-heading">
               <h3>${merchant.name}</h3>
-              <span class="badge">贝叶斯 ${merchant.bayes.toFixed(2)}</span>
+              <span class="badge">评分 ${merchant.bayes.toFixed(2)}</span>
             </div>
             <div class="merchant-meta">
               <span>${merchant.location}</span>
               <span>${merchant.reviewCount} 条评价</span>
-              <span>均分 ${merchant.average.toFixed(1)}</span>
             </div>
             <button class="primary" onclick="selectMerchant(${merchant.id})">查看详情</button>
           </div>
@@ -229,12 +228,10 @@ function renderDetail() {
 function renderProfile() {
   if (!state.currentUser) {
     els.profilePanel.innerHTML = `
-      <p class="muted">游客可以浏览内容；评价、举报、上传商家、反馈与个人中心需要登录。</p>
       <div class="profile-actions">
         <button class="primary" onclick="openAuthDialog()">登录</button>
         <button class="secondary" onclick="openMerchantUpload()">上传商家</button>
       </div>
-      <p class="muted">管理员功能已转移到独立的管理员工作台页面。</p>
     `;
     return;
   }
