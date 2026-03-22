@@ -249,7 +249,6 @@ function renderProfile() {
       <span class="badge">${state.currentUser.role}</span>
     </div>
     <p class="muted">学号 ${state.currentUser.studentId} · 昵称每 7 天可修改一次 · 可删除自己的评价并重新发布。</p>
-    <div class="stat"><div class="eyebrow">我的能力</div><strong>上传商家 / 发布评价 / 举报评价 / 提交反馈</strong></div>
     <div class="profile-actions">
       <button class="primary" onclick="openMerchantUpload()">上传商家</button>
       <button class="secondary" onclick="submitFeedback()">提交反馈</button>
