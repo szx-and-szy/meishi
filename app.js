@@ -83,9 +83,17 @@ const els = {
   foodTabButton: document.getElementById('foodTabButton'),
   profileTabButton: document.getElementById('profileTabButton'),
   authDialog: document.getElementById('authDialog'),
+  registerDialog: document.getElementById('registerDialog'),
+  forgotPasswordDialog: document.getElementById('forgotPasswordDialog'),
   studentIdInput: document.getElementById('studentIdInput'),
-  nicknameInput: document.getElementById('nicknameInput'),
+  passwordInput: document.getElementById('passwordInput'),
+  openRegisterButton: document.getElementById('openRegisterButton'),
+  forgotPasswordButton: document.getElementById('forgotPasswordButton'),
+  registerNicknameInput: document.getElementById('registerNicknameInput'),
+  registerStudentIdInput: document.getElementById('registerStudentIdInput'),
+  registerPasswordInput: document.getElementById('registerPasswordInput'),
   confirmLogin: document.getElementById('confirmLogin'),
+  confirmRegister: document.getElementById('confirmRegister'),
 };
 
 function studentIdValid(studentId) {
@@ -344,17 +352,22 @@ els.profileTabButton.addEventListener('click', () => setActiveView('profile'));
 els.confirmLogin.addEventListener('click', (event) => {
   event.preventDefault();
   const studentId = els.studentIdInput.value.trim();
-  const nickname = els.nicknameInput.value.trim() || '新同学';
+  const password = els.passwordInput.value.trim();
   if (!studentIdValid(studentId)) {
     alert('学号格式错误，必须匹配 ^202[0-9][0-9]{4}$。');
     return;
   }
+  if (!password) {
+    alert('请输入密码。');
+    return;
+  }
   state.currentUser = {
     studentId,
-    nickname,
+    nickname: '同学',
     role: studentId === '20233897' ? 'super_admin' : 'user',
   };
   els.authDialog.close();
+  els.passwordInput.value = '';
   renderProfile();
   renderAdmin();
   setActiveView(state.activeView === 'admin' ? 'profile' : state.activeView);
@@ -370,3 +383,48 @@ function init() {
 }
 
 init();
+
+
+els.openRegisterButton.addEventListener('click', () => {
+  els.authDialog.close();
+  els.registerDialog.showModal();
+});
+
+els.forgotPasswordButton.addEventListener('click', () => {
+  els.authDialog.close();
+  els.forgotPasswordDialog.showModal();
+});
+
+els.confirmRegister.addEventListener('click', (event) => {
+  event.preventDefault();
+  const studentId = els.registerStudentIdInput.value.trim();
+  const nickname = els.registerNicknameInput.value.trim();
+  const password = els.registerPasswordInput.value.trim();
+
+  if (!nickname) {
+    alert('请输入昵称。');
+    return;
+  }
+  if (!studentIdValid(studentId)) {
+    alert('学号格式错误，必须匹配 ^202[0-9][0-9]{4}$。');
+    return;
+  }
+  if (!password) {
+    alert('请输入密码。');
+    return;
+  }
+
+  state.currentUser = {
+    studentId,
+    nickname,
+    role: studentId === '20233897' ? 'super_admin' : 'user',
+  };
+
+  els.registerDialog.close();
+  els.registerNicknameInput.value = '';
+  els.registerStudentIdInput.value = '';
+  els.registerPasswordInput.value = '';
+  renderProfile();
+  renderAdmin();
+  setActiveView('profile');
+});

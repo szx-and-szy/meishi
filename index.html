@@ -26,7 +26,6 @@
           </section>
         </section>
 
-
         <section id="detailView" class="view-panel panel-stack is-hidden" data-view="detail">
           <section class="card detail-panel">
             <div class="section-heading">
@@ -66,19 +65,51 @@
 
     <dialog id="authDialog">
       <form method="dialog" class="dialog-form">
-        <h3>学号登录 / 首次注册</h3>
+        <h3>学号登录</h3>
         <label>
           学号
           <input id="studentIdInput" type="text" inputmode="numeric" placeholder="20230001" />
         </label>
         <label>
-          昵称
-          <input id="nicknameInput" type="text" maxlength="20" placeholder="首次注册时填写" />
+          密码
+          <input id="passwordInput" type="password" placeholder="请输入密码" />
         </label>
-        <p class="hint">规则：8 位数字，前四位为 2020–2029。忘记密码请联系管理员 QQ 3425749029。</p>
+        <menu>
+          <button id="forgotPasswordButton" type="button" class="secondary">忘记密码</button>
+          <button id="openRegisterButton" type="button" class="secondary">注册</button>
+          <button id="confirmLogin" value="default" class="primary">登录</button>
+        </menu>
+      </form>
+    </dialog>
+
+    <dialog id="registerDialog">
+      <form method="dialog" class="dialog-form">
+        <h3>注册</h3>
+        <label>
+          昵称
+          <input id="registerNicknameInput" type="text" maxlength="20" placeholder="请输入昵称" />
+        </label>
+        <label>
+          学号
+          <input id="registerStudentIdInput" type="text" inputmode="numeric" placeholder="20230001" />
+        </label>
+        <label>
+          密码
+          <input id="registerPasswordInput" type="password" placeholder="请输入密码" />
+        </label>
         <menu>
           <button value="cancel">取消</button>
-          <button id="confirmLogin" value="default" class="primary">确认</button>
+          <button id="confirmRegister" value="default" class="primary">注册</button>
+        </menu>
+      </form>
+    </dialog>
+
+    <dialog id="forgotPasswordDialog">
+      <form method="dialog" class="dialog-form">
+        <h3>忘记密码</h3>
+        <p>请联系管理员QQ：安财经济学院融媒体中心3425749029</p>
+        <menu>
+          <button value="default" class="primary">知道了</button>
         </menu>
       </form>
     </dialog>
