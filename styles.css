@@ -28,19 +28,16 @@ button, input, select, textarea {
   margin: 0 auto;
   padding: 16px 16px 96px;
 }
-.topbar, .section-heading, .merchant-meta, .review-row, .hero-actions, .bottom-nav {
+.topbar, .section-heading, .merchant-meta, .review-row, .profile-actions, .bottom-nav {
   display: flex;
   justify-content: space-between;
   align-items: center;
   gap: 12px;
 }
 .topbar {
-  position: fixed;
+  position: sticky;
   top: 16px;
-  left: 50%;
   z-index: 10;
-  transform: translateX(-50%);
-  width: min(1080px, calc(100% - 32px));
   margin-bottom: 16px;
   flex-direction: column;
   align-items: stretch;
@@ -60,7 +57,6 @@ button, input, select, textarea {
 h1, h2, h3, p { margin: 0; }
 .content {
   position: relative;
-  padding-top: 200px;
 }
 .view-panel, .panel-stack { display: grid; gap: 16px; }
 .is-hidden { display: none; }
@@ -71,11 +67,6 @@ h1, h2, h3, p { margin: 0; }
   box-shadow: var(--shadow);
   padding: 16px;
 }
-.hero {
-  display: grid;
-  gap: 16px;
-}
-.hero h2 { margin-bottom: 8px; }
 .primary, .secondary, .chip {
   border: none;
   border-radius: 999px;
@@ -118,7 +109,7 @@ input, select, textarea {
   background: #dbe6f8;
 }
 .merchant-content { padding: 0 14px 14px; display: grid; gap: 8px; }
-.merchant-meta { color: var(--muted); font-size: 14px; }
+.merchant-meta { color: var(--muted); font-size: 14px; flex-wrap: wrap; }
 .badge {
   display: inline-flex;
   align-items: center;
@@ -157,6 +148,10 @@ input, select, textarea {
 .status-warning { color: var(--warning); }
 .status-danger { color: var(--danger); }
 .status-success { color: var(--success); }
+.profile-actions {
+  flex-wrap: wrap;
+  justify-content: flex-start;
+}
 .bottom-nav {
   position: fixed;
   left: 50%;
@@ -199,6 +194,5 @@ menu {
   margin: 0;
 }
 @media (min-width: 720px) {
-  .hero { grid-template-columns: 1.5fr 1fr; align-items: center; }
   .merchant-list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }

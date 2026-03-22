@@ -3,17 +3,13 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Meishi 校园餐饮点评</title>
+    <title>校园餐饮</title>
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
     <div class="app-shell">
       <header class="topbar card">
         <input id="searchInput" type="search" placeholder="搜索商家名称" maxlength="20" />
-        <div>
-          <p class="eyebrow">校园餐饮点评</p>
-          <h1>Meishi</h1>
-        </div>
         <label id="locationBar" class="location-picker">
           <span>位置</span>
           <select id="locationSelect"></select>
@@ -22,20 +18,6 @@
 
       <main class="content">
         <section id="foodView" class="view-panel panel-stack" data-view="food">
-          <section class="hero card">
-            <div>
-              <p class="eyebrow">GitHub Pages + Supabase</p>
-              <h2>面向校园餐饮场景的网站</h2>
-              <p>
-                游客可浏览商家与评价；登录用户可上传商家、评价、举报与反馈；管理员可审核商家、处理举报与重置密码。
-              </p>
-            </div>
-            <div class="hero-actions">
-              <button id="loginButton" class="primary">学号登录</button>
-              <button id="merchantButton" class="secondary">上传商家</button>
-            </div>
-          </section>
-
           <section class="card filters">
             <div class="stats-grid" id="platformStats"></div>
           </section>
@@ -67,7 +49,9 @@
             </div>
             <div id="profilePanel" class="panel-stack"></div>
           </article>
+        </section>
 
+        <section id="adminView" class="view-panel panel-stack is-hidden" data-view="admin">
           <article class="card">
             <div class="section-heading">
               <h2>管理员工作台</h2>

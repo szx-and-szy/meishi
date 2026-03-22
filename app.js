@@ -77,12 +77,11 @@ const els = {
   adminPanel: document.getElementById('adminPanel'),
   foodView: document.getElementById('foodView'),
   profileView: document.getElementById('profileView'),
+  adminView: document.getElementById('adminView'),
   locationBar: document.getElementById('locationBar'),
   foodTabButton: document.getElementById('foodTabButton'),
   profileTabButton: document.getElementById('profileTabButton'),
   authDialog: document.getElementById('authDialog'),
-  loginButton: document.getElementById('loginButton'),
-  merchantButton: document.getElementById('merchantButton'),
   studentIdInput: document.getElementById('studentIdInput'),
   nicknameInput: document.getElementById('nicknameInput'),
   confirmLogin: document.getElementById('confirmLogin'),
@@ -95,11 +94,15 @@ function studentIdValid(studentId) {
 function setActiveView(view) {
   state.activeView = view;
   const isFoodView = view === 'food';
+  const isProfileView = view === 'profile';
+  const isAdminView = view === 'admin';
   els.foodView.classList.toggle('is-hidden', !isFoodView);
-  els.profileView.classList.toggle('is-hidden', isFoodView);
+  els.profileView.classList.toggle('is-hidden', !isProfileView);
+  els.adminView.classList.toggle('is-hidden', !isAdminView);
   els.locationBar.classList.toggle('is-hidden', !isFoodView);
+  els.searchInput.classList.toggle('is-hidden', !isFoodView);
   els.foodTabButton.classList.toggle('active', isFoodView);
-  els.profileTabButton.classList.toggle('active', !isFoodView);
+  els.profileTabButton.classList.toggle('active', isProfileView || isAdminView);
 }
 
 function getPlatformAverage() {
@@ -239,10 +242,18 @@ function renderProfile() {
   if (!state.currentUser) {
     els.profilePanel.innerHTML = `
       <p class="muted">游客可以浏览内容；评价、举报、上传商家、反馈与个人中心需要登录。</p>
-      <button class="primary" onclick="openAuthDialog()">去登录</button>
+      <div class="profile-actions">
+        <button class="primary" onclick="openAuthDialog()">登录</button>
+        <button class="secondary" onclick="openMerchantUpload()">上传商家</button>
+      </div>
+      <p class="muted">管理员功能已转移到独立的管理员工作台页面。</p>
     `;
     return;
   }
+
+  const adminEntry = ['admin', 'super_admin'].includes(state.currentUser.role)
+    ? '<button class="secondary" onclick="openAdminWorkbench()">管理员工作台</button>'
+    : '';
 
   els.profilePanel.innerHTML = `
     <div class="review-row">
@@ -251,7 +262,11 @@ function renderProfile() {
     </div>
     <p class="muted">学号 ${state.currentUser.studentId} · 昵称每 7 天可修改一次 · 可删除自己的评价并重新发布。</p>
     <div class="stat"><div class="eyebrow">我的能力</div><strong>上传商家 / 发布评价 / 举报评价 / 提交反馈</strong></div>
-    <button class="secondary" onclick="submitFeedback()">提交反馈</button>
+    <div class="profile-actions">
+      <button class="primary" onclick="openMerchantUpload()">上传商家</button>
+      <button class="secondary" onclick="submitFeedback()">提交反馈</button>
+      ${adminEntry}
+    </div>
   `;
 }
 
@@ -259,8 +274,8 @@ function renderAdmin() {
   const isAdmin = ['admin', 'super_admin'].includes(state.currentUser?.role);
   if (!isAdmin) {
     els.adminPanel.innerHTML = `
-      <p class="muted">管理员可审核商家、处理举报、警告或限评用户，并通过 Edge Functions 重置密码。</p>
-      <div class="stat"><div class="eyebrow">超级管理员</div><strong>20233897</strong></div>
+      <p class="muted">仅管理员可以进入此页面。</p>
+      <button class="secondary" onclick="setActiveView('profile')">返回个人中心</button>
     `;
     return;
   }
@@ -274,7 +289,10 @@ function renderAdmin() {
     <div class="stat"><div class="eyebrow">举报审核队列</div><strong>${reportQueue.length} 条</strong></div>
     <p class="muted">支持商家审核、举报处理、警告、限评、编辑封面图、按学号重置密码为学号本身。</p>
     <ul>${reportQueue.map((item) => `<li>${item}</li>`).join('') || '<li>当前无达到 20 次举报的评价。</li>'}</ul>
-    <button class="primary" onclick="resetPassword()">管理员重置密码</button>
+    <div class="profile-actions">
+      <button class="primary" onclick="resetPassword()">管理员重置密码</button>
+      <button class="secondary" onclick="setActiveView('profile')">返回个人中心</button>
+    </div>
   `;
 }
 
@@ -309,6 +327,18 @@ window.submitFeedback = () => {
   if (!requireLogin('提交反馈')) return;
   alert('已打开反馈表单（示例）。');
 };
+window.openMerchantUpload = () => {
+  if (!requireLogin('上传商家')) return;
+  alert('上传商家需要填写名称、位置，可补充最多 8 张商家图和最多 3 个菜品。');
+};
+window.openAdminWorkbench = () => {
+  const isAdmin = ['admin', 'super_admin'].includes(state.currentUser?.role);
+  if (!isAdmin) {
+    alert('仅管理员可进入管理员工作台。');
+    return;
+  }
+  setActiveView('admin');
+};
 window.resetPassword = () => {
   alert('此操作应通过 Supabase Edge Function 执行，并在函数内校验管理员身份。');
 };
@@ -323,13 +353,8 @@ els.searchInput.addEventListener('input', (event) => {
   renderMerchants();
 });
 
-els.loginButton.addEventListener('click', openAuthDialog);
 els.foodTabButton.addEventListener('click', () => setActiveView('food'));
 els.profileTabButton.addEventListener('click', () => setActiveView('profile'));
-els.merchantButton.addEventListener('click', () => {
-  if (!requireLogin('上传商家')) return;
-  alert('上传商家需要填写名称、位置，可补充最多 8 张商家图和最多 3 个菜品。');
-});
 
 els.confirmLogin.addEventListener('click', (event) => {
   event.preventDefault();
@@ -347,7 +372,7 @@ els.confirmLogin.addEventListener('click', (event) => {
   els.authDialog.close();
   renderProfile();
   renderAdmin();
-  setActiveView(state.activeView);
+  setActiveView(state.activeView === 'admin' ? 'profile' : state.activeView);
 });
 
 function init() {
