@@ -44,7 +44,9 @@ button, input, select, textarea {
   letter-spacing: .08em;
 }
 h1, h2, h3, p { margin: 0; }
-.content { display: grid; gap: 16px; }
+.content { position: relative; }
+.view-panel, .panel-stack { display: grid; gap: 16px; }
+.is-hidden { display: none; }
 .card {
   background: var(--surface);
   border: 1px solid var(--border);
@@ -73,7 +75,7 @@ input, select, textarea {
   padding: 12px 14px;
   background: #fbfcff;
 }
-.stats-grid, .merchant-list, .panel-stack, .review-list, .photo-strip {
+.stats-grid, .merchant-list, .review-list, .photo-strip {
   display: grid;
   gap: 12px;
 }
@@ -153,15 +155,17 @@ input, select, textarea {
   border-radius: 999px;
   width: min(420px, calc(100% - 32px));
 }
-.bottom-nav a {
+.nav-tab {
   flex: 1;
+  border: none;
+  cursor: pointer;
   text-align: center;
   color: rgba(255,255,255,.78);
-  text-decoration: none;
+  background: transparent;
   padding: 10px 14px;
   border-radius: 999px;
 }
-.bottom-nav a.active { background: white; color: var(--text); }
+.nav-tab.active { background: white; color: var(--text); }
 dialog {
   border: none;
   border-radius: 20px;

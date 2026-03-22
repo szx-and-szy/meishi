@@ -15,6 +15,7 @@ const state = {
   selectedMerchantId: null,
   currentUser: null,
   bayesThreshold: 5,
+  activeView: 'food',
 };
 
 const merchants = [
@@ -74,6 +75,10 @@ const els = {
   platformStats: document.getElementById('platformStats'),
   profilePanel: document.getElementById('profilePanel'),
   adminPanel: document.getElementById('adminPanel'),
+  foodView: document.getElementById('foodView'),
+  profileView: document.getElementById('profileView'),
+  foodTabButton: document.getElementById('foodTabButton'),
+  profileTabButton: document.getElementById('profileTabButton'),
   authDialog: document.getElementById('authDialog'),
   loginButton: document.getElementById('loginButton'),
   merchantButton: document.getElementById('merchantButton'),
@@ -84,6 +89,15 @@ const els = {
 
 function studentIdValid(studentId) {
   return /^202[0-9][0-9]{4}$/.test(studentId);
+}
+
+function setActiveView(view) {
+  state.activeView = view;
+  const isFoodView = view === 'food';
+  els.foodView.classList.toggle('is-hidden', !isFoodView);
+  els.profileView.classList.toggle('is-hidden', isFoodView);
+  els.foodTabButton.classList.toggle('active', isFoodView);
+  els.profileTabButton.classList.toggle('active', !isFoodView);
 }
 
 function getPlatformAverage() {
@@ -266,6 +280,8 @@ function openAuthDialog() {
   els.authDialog.showModal();
 }
 
+window.openAuthDialog = openAuthDialog;
+
 function requireLogin(actionName) {
   if (!state.currentUser) {
     alert(`${actionName} 需要先登录，系统将引导你进入学号登录。`);
@@ -306,6 +322,8 @@ els.searchInput.addEventListener('input', (event) => {
 });
 
 els.loginButton.addEventListener('click', openAuthDialog);
+els.foodTabButton.addEventListener('click', () => setActiveView('food'));
+els.profileTabButton.addEventListener('click', () => setActiveView('profile'));
 els.merchantButton.addEventListener('click', () => {
   if (!requireLogin('上传商家')) return;
   alert('上传商家需要填写名称、位置，可补充最多 8 张商家图和最多 3 个菜品。');
@@ -327,6 +345,7 @@ els.confirmLogin.addEventListener('click', (event) => {
   els.authDialog.close();
   renderProfile();
   renderAdmin();
+  setActiveView(state.activeView);
 });
 
 function init() {
@@ -336,6 +355,7 @@ function init() {
   renderDetail();
   renderProfile();
   renderAdmin();
+  setActiveView(state.activeView);
 }
 
 init();
