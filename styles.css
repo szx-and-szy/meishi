@@ -77,6 +77,7 @@ h1, h2, h3, p { margin: 0; }
 }
 .primary { background: var(--primary); color: white; }
 .secondary { background: #fed7aa; color: #c2410c; }
+.outline { background: transparent; color: var(--text); border: 1px solid var(--border); }
 .filters { display: grid; gap: 12px; }
 input, select, textarea {
   width: 100%;
@@ -267,7 +268,14 @@ input, select, textarea {
   border-radius: 50%;
   object-fit: cover;
   border: 2px solid var(--border);
-  background: #e8f0ff;
+  background: #fff7ed;
+}
+.avatar-empty {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  border: 2px dashed var(--border);
+  background: #fff7ed;
 }
 .avatar-upload {
   position: absolute;
