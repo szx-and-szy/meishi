@@ -48,6 +48,19 @@ button, input, select, textarea {
   display: grid;
   gap: 8px;
 }
+.filter-bar {
+  display: flex;
+  gap: 12px;
+}
+.filter-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+}
+.filter-item select {
+  flex: 1;
+}
 .eyebrow {
   margin: 0 0 4px;
   color: #c2410c;
@@ -68,6 +81,24 @@ h1, h2, h3, p { margin: 0; }
   border-radius: 20px;
   box-shadow: var(--shadow);
   padding: 16px;
+}
+#adminView .section-heading {
+  margin-bottom: 8px;
+}
+.search-box {
+  margin-bottom: 8px;
+}
+.search-box input {
+  width: 100%;
+  padding: 10px 14px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  font-size: 14px;
+  outline: none;
+  transition: border-color 0.2s;
+}
+.search-box input:focus {
+  border-color: var(--primary);
 }
 .primary, .secondary, .outline, .chip {
   border-radius: 999px;
@@ -124,6 +155,10 @@ input, select, textarea {
   font-weight: 700;
   white-space: nowrap;
   width: fit-content;
+}
+.badge-large {
+  padding: 8px 14px;
+  font-size: 14px;
 }
 .badge-dark {
   background: #172033;
@@ -309,7 +344,7 @@ input, select, textarea {
 }
 .profile-actions {
   display: grid;
-  gap: 12px;
+  gap: 16px;
 }
 .profile-actions button {
   width: 100%;
@@ -347,6 +382,14 @@ dialog {
   display: grid;
   gap: 12px;
   padding: 20px;
+}
+.dialog-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.dialog-header h3 {
+  margin: 0;
 }
 .dialog-form label {
   display: grid;
@@ -387,9 +430,13 @@ menu {
 }
 .auth-buttons .primary {
   justify-self: center;
+  min-width: 120px;
 }
 .auth-buttons .secondary {
   justify-self: end;
+}
+.login-btn {
+  min-width: 140px;
 }
 .dialog-buttons {
   display: flex;
