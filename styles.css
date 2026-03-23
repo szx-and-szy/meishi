@@ -120,10 +120,30 @@ input, select, textarea {
   color: var(--primary-dark);
   font-size: 12px;
   font-weight: 700;
+  white-space: nowrap;
+  width: fit-content;
 }
 .badge-dark {
   background: #172033;
   color: #ffffff;
+}
+.rating {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  font-size: 14px;
+  font-weight: 700;
+  color: #172033;
+}
+.rating-star {
+  color: #f59e0b;
+  font-size: 16px;
+}
+.rating-small {
+  font-size: 12px;
+}
+.rating-small .rating-star {
+  font-size: 14px;
 }
 .image-preview {
   display: grid;
