@@ -113,10 +113,28 @@ async function loadMerchants() {
 
   const { data: merchantsData, error } = await client
     .from('merchants')
-    .select('id, name, location, cover_image_url, description, status')
+    .select(`
+      id,
+      name,
+      location,
+      cover_image_url,
+      description,
+      status,
+      merchant_images(image_url, sort_order),
+      reviews(
+        id,
+        rating,
+        content,
+        report_count,
+        created_at,
+        user_id,
+        users(nickname, avatar_url)
+      )
+    `)
     .eq('status', 'approved');
 
   if (error || !merchantsData) {
+    console.error('加载商家失败:', error);
     state.merchants = [];
     renderMerchants();
     return;
@@ -131,45 +149,27 @@ async function loadMerchants() {
     status: m.status,
   }));
 
-  for (const merchant of state.merchants) {
-    const { data: images } = await client
-      .from('merchant_images')
-      .select('image_url')
-      .eq('merchant_id', merchant.id)
-      .order('sort_order', { ascending: true });
-    state.merchantImages[merchant.id] = images ? images.map(img => img.image_url) : [];
-  }
+  state.merchantImages = {};
+  state.merchantReviews = {};
 
-  for (const merchant of state.merchants) {
-    const { data: reviews } = await client
-      .from('reviews')
-      .select('id, rating, content, report_count, created_at, user_id')
-      .eq('merchant_id', merchant.id)
-      .eq('status', 'visible')
-      .order('created_at', { ascending: false });
-    
-    if (reviews && reviews.length > 0) {
-      const reviewsWithUser = [];
-      for (const r of reviews) {
-        const { data: user } = await client
-          .from('users')
-          .select('nickname, avatar_url')
-          .eq('id', r.user_id)
-          .single();
-        reviewsWithUser.push({
-          id: r.id,
-          user: user?.nickname || '匿名用户',
-          avatarUrl: user?.avatar_url || null,
-          rating: r.rating,
-          content: r.content,
-          createdAt: r.created_at.split('T')[0],
-          reportCount: r.report_count,
-        });
-      }
-      state.merchantReviews[merchant.id] = reviewsWithUser;
-    } else {
-      state.merchantReviews[merchant.id] = [];
-    }
+  for (const m of merchantsData) {
+    const images = m.merchant_images || [];
+    state.merchantImages[m.id] = images
+      .sort((a, b) => a.sort_order - b.sort_order)
+      .map(img => img.image_url);
+
+    const reviews = m.reviews || [];
+    state.merchantReviews[m.id] = reviews
+      .filter(r => r.report_count < 20)
+      .map(r => ({
+        id: r.id,
+        user: r.users?.nickname || '匿名用户',
+        avatarUrl: r.users?.avatar_url || null,
+        rating: r.rating,
+        content: r.content,
+        createdAt: r.created_at?.split('T')[0] || '',
+        reportCount: r.report_count,
+      }));
   }
 
   renderMerchants();
@@ -436,6 +436,14 @@ function renderDetail() {
 function renderProfile() {
   if (!state.currentUser) {
     els.profilePanel.innerHTML = `
+      <div class="profile-header">
+        <div class="avatar-wrapper">
+          <div class="avatar avatar-empty"></div>
+        </div>
+        <div class="profile-info">
+          <strong>请注册/登录</strong>
+        </div>
+      </div>
       <div class="profile-actions">
         <button class="primary" onclick="openAuthDialog()">登录</button>
       </div>
@@ -476,7 +484,7 @@ function renderProfile() {
       <button class="secondary" onclick="openEditProfile()">编辑个人资料</button>
       <button class="secondary" onclick="submitFeedback()">提交反馈</button>
       ${adminEntry}
-      <button class="secondary" onclick="logout()">退出登录</button>
+      <button class="outline" onclick="logout()">退出登录</button>
     </div>
   `;
 }
@@ -755,7 +763,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 window.submitFeedback = () => {
   if (!requireLogin('提交反馈')) return;
-  alert('反馈功能开发中，若有问题或建议请联系管理员安财经济学院融媒体中心QQ：3425749029，反馈被采纳将提供志愿学分。');
+  alert('反馈功能开发中，请联系管理员QQ：3425749029');
 };
 
 window.approveMerchant = async (merchantId) => {
