@@ -74,10 +74,10 @@
           密码
           <input id="passwordInput" type="password" placeholder="请输入密码" />
         </label>
-        <menu>
+        <menu class="auth-buttons">
           <button id="forgotPasswordButton" type="button" class="link-button">忘记密码</button>
-          <button id="openRegisterButton" type="button" class="secondary">注册</button>
           <button id="confirmLogin" value="default" class="primary">登录</button>
+          <button id="openRegisterButton" type="button" class="secondary">注册</button>
         </menu>
       </form>
     </dialog>
@@ -186,8 +186,8 @@
           确认新密码
           <input id="confirmNewPassword" type="password" placeholder="请再次输入新密码" />
         </label>
-        <menu>
-          <button value="cancel">取消</button>
+        <menu class="dialog-buttons">
+          <button value="cancel" class="secondary">取消</button>
           <button id="confirmEditProfile" value="default" class="primary">保存</button>
         </menu>
       </form>
