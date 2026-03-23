@@ -1,4 +1,5 @@
 const LOCATIONS = [
+  '全部',
   '南苑一楼',
   '南苑二楼',
   '南苑三楼',
@@ -11,8 +12,15 @@ const LOCATIONS = [
 
 const STAR_SVG = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>';
 
+const RATING_SORT_OPTIONS = [
+  { value: 'none', label: '无排序' },
+  { value: 'desc', label: '评分降序' },
+  { value: 'asc', label: '评分升序' },
+];
+
 const state = {
   currentLocation: LOCATIONS[0],
+  ratingSort: 'none',
   search: '',
   selectedMerchantId: null,
   currentUser: null,
@@ -177,6 +185,7 @@ async function loadMerchants() {
 
 const els = {
   locationSelect: document.getElementById('locationSelect'),
+  ratingSortSelect: document.getElementById('ratingSortSelect'),
   searchInput: document.getElementById('searchInput'),
   merchantList: document.getElementById('merchantList'),
   merchantDetail: document.getElementById('merchantDetail'),
@@ -311,16 +320,28 @@ function merchantSummary(merchant) {
 }
 
 function getFilteredMerchants() {
-  return state.merchants
-    .filter((merchant) => merchant.location === state.currentLocation)
+  let filtered = state.merchants
+    .filter((merchant) => state.currentLocation === '全部' || merchant.location === state.currentLocation)
     .filter((merchant) => merchant.name.includes(state.search.trim()))
-    .map(merchantSummary)
-    .sort((a, b) => b.bayes - a.bayes);
+    .map(merchantSummary);
+
+  if (state.ratingSort === 'desc') {
+    filtered = filtered.sort((a, b) => b.bayes - a.bayes);
+  } else if (state.ratingSort === 'asc') {
+    filtered = filtered.sort((a, b) => a.bayes - b.bayes);
+  }
+
+  return filtered;
 }
 
 function renderLocationOptions() {
   els.locationSelect.innerHTML = LOCATIONS.map((location) => `<option value="${location}">${location}</option>`).join('');
   els.locationSelect.value = state.currentLocation;
+}
+
+function renderRatingSortOptions() {
+  els.ratingSortSelect.innerHTML = RATING_SORT_OPTIONS.map((option) => `<option value="${option.value}">${option.label}</option>`).join('');
+  els.ratingSortSelect.value = state.ratingSort;
 }
 
 
@@ -595,8 +616,11 @@ async function renderAdminReportedReviews() {
   `;
 }
 
-function renderAdminMerchantList() {
-  const merchants = state.merchants;
+function renderAdminMerchantList(searchTerm = '') {
+  const allMerchants = state.merchants;
+  const merchants = searchTerm 
+    ? allMerchants.filter(m => m.name.toLowerCase().includes(searchTerm.toLowerCase()))
+    : allMerchants;
   
   const listHtml = merchants.length > 0
     ? merchants.map(m => `
@@ -608,15 +632,22 @@ function renderAdminMerchantList() {
           </div>
         </div>
       `).join('')
-    : '<p class="muted">暂无商家。</p>';
+    : '<p class="muted">暂无匹配的商家。</p>';
 
   els.adminPanel.innerHTML = `
-    <div class="section-heading"><h3>商家列表</h3><span class="badge">${merchants.length} 家</span></div>
-    <div class="merchant-list">${listHtml}</div>
-    <div class="profile-actions">
-      <button class="secondary" onclick="renderAdmin()">返回</button>
+    <div class="section-heading admin-list-header">
+      <h3>商家列表</h3>
+      <span class="badge badge-large">${merchants.length} 家</span>
     </div>
+    <div class="search-box">
+      <input type="text" id="adminMerchantSearch" placeholder="搜索商家名称..." value="${searchTerm}" oninput="filterAdminMerchants(this.value)" />
+    </div>
+    <div class="merchant-list">${listHtml}</div>
   `;
+}
+
+function filterAdminMerchants(searchTerm) {
+  renderAdminMerchantList(searchTerm);
 }
 
 function selectAdminMerchant(merchantId) {
@@ -1084,6 +1115,7 @@ window.openAdminWorkbench = () => {
 window.renderAdminPendingMerchants = renderAdminPendingMerchants;
 window.renderAdminReportedReviews = renderAdminReportedReviews;
 window.renderAdminMerchantList = renderAdminMerchantList;
+window.filterAdminMerchants = filterAdminMerchants;
 window.selectAdminMerchant = selectAdminMerchant;
 window.deleteMerchant = deleteMerchant;
 window.resetPassword = () => {
@@ -1092,6 +1124,11 @@ window.resetPassword = () => {
 
 els.locationSelect.addEventListener('change', (event) => {
   state.currentLocation = event.target.value;
+  renderMerchants();
+});
+
+els.ratingSortSelect.addEventListener('change', (event) => {
+  state.ratingSort = event.target.value;
   renderMerchants();
 });
 
@@ -1137,6 +1174,7 @@ els.confirmLogin.addEventListener('click', async (event) => {
 
 async function init() {
   renderLocationOptions();
+  renderRatingSortOptions();
   renderProfile();
   renderAdmin();
   setActiveView(state.activeView);
