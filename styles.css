@@ -125,6 +125,17 @@ input, select, textarea {
   background: #172033;
   color: #ffffff;
 }
+.image-preview {
+  display: grid;
+  gap: 8px;
+}
+.image-preview img {
+  width: 100%;
+  max-height: 200px;
+  object-fit: cover;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+}
 .empty-state {
   min-height: 160px;
   display: grid;
@@ -161,6 +172,55 @@ input, select, textarea {
 .status-warning { color: var(--warning); }
 .status-danger { color: var(--danger); }
 .status-success { color: var(--success); }
+.profile-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+.avatar-wrapper {
+  position: relative;
+  flex-shrink: 0;
+}
+.avatar {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid var(--border);
+  background: #e8f0ff;
+}
+.avatar-upload {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  background: var(--primary);
+  color: white;
+  font-size: 10px;
+  padding: 2px 6px;
+  border-radius: 999px;
+  cursor: pointer;
+}
+.avatar-upload input {
+  display: none;
+}
+.profile-info {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.review-user {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.review-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  object-fit: cover;
+  background: #e8f0ff;
+}
 .profile-actions {
   display: grid;
   gap: 12px;
