@@ -22,7 +22,7 @@ const supabaseConfig = window.__SUPABASE_CONFIG__ || {};
 const supabaseUrl = supabaseConfig.url || '';
 const supabaseAnonKey = supabaseConfig.anonKey || '';
 const authEmailDomain = supabaseConfig.emailDomain || 'meishi.local';
-const supabase = supabaseUrl && supabaseAnonKey && window.supabase
+const supabase = supabaseUrl && supabaseAnonKey && window.supabase && typeof window.supabase.createClient === 'function'
   ? window.supabase.createClient(supabaseUrl, supabaseAnonKey)
   : null;
 
@@ -345,6 +345,7 @@ function openAuthDialog() {
   els.authDialog.showModal();
 }
 
+window.setActiveView = setActiveView;
 window.openAuthDialog = openAuthDialog;
 
 function requireLogin(actionName) {
