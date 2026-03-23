@@ -389,29 +389,13 @@ function renderDetail() {
     .join('');
 
   const images = state.merchantImages[merchant.id] || [];
-  const isAdmin = ['admin', 'super_admin'].includes(state.currentUser?.role);
   
   let photoStripHtml = '';
   if (images.length > 0) {
-    if (isAdmin) {
-      photoStripHtml = `<div class="photo-strip photo-strip-admin">${images
-        .map((image, index) => `
-          <div class="photo-item">
-            <img src="${image}" alt="${merchant.name} 图片 ${index + 1}" />
-            <button class="photo-delete-btn" onclick="deleteMerchantImage('${merchant.id}', '${image}')">×</button>
-          </div>
-        `)
-        .join('')}</div>`;
-    } else {
-      photoStripHtml = `<div class="photo-strip">${images
-        .map((image, index) => `<img src="${image}" alt="${merchant.name} 图片 ${index + 1}" />`)
-        .join('')}</div>`;
-    }
+    photoStripHtml = `<div class="photo-strip">${images
+      .map((image, index) => `<img src="${image}" alt="${merchant.name} 图片 ${index + 1}" />`)
+      .join('')}</div>`;
   }
-  
-  const adminPhotoUploadHtml = isAdmin
-    ? `<div class="section-heading"><label class="photo-upload-btn"><input type="file" accept="image/*" onchange="uploadMerchantImage('${merchant.id}', this)" /><span>修改照片</span></label></div>`
-    : '';
 
   els.merchantDetail.className = 'merchant-detail panel-stack';
   els.merchantDetail.innerHTML = `
@@ -426,7 +410,6 @@ function renderDetail() {
     <div class="merchant-meta">
       <span>${summary.reviewCount} 条评价</span>
     </div>
-    ${adminPhotoUploadHtml}
     ${photoStripHtml}
     <div class="section-heading"><h3>评价列表</h3><button class="primary" onclick="writeReview()">评价</button></div>
     <div class="review-list">${reviewsHtml}</div>
@@ -540,6 +523,7 @@ async function renderAdmin() {
     <div class="profile-actions">
       <button class="primary" onclick="renderAdminPendingMerchants()">待审核商家</button>
       <button class="secondary" onclick="renderAdminReportedReviews()">举报审核</button>
+      <button class="secondary" onclick="renderAdminMerchantList()">商家列表</button>
       <button class="secondary" onclick="setActiveView('profile')">返回个人中心</button>
     </div>
   `;
@@ -609,6 +593,102 @@ async function renderAdminReportedReviews() {
       <button class="secondary" onclick="renderAdmin()">返回</button>
     </div>
   `;
+}
+
+function renderAdminMerchantList() {
+  const merchants = state.merchants;
+  
+  const listHtml = merchants.length > 0
+    ? merchants.map(m => `
+        <div class="merchant-card" onclick="selectAdminMerchant('${m.id}')" style="cursor: pointer;">
+          <img src="${m.cover}" alt="${m.name}" style="height: 140px;" />
+          <div class="merchant-content">
+            <strong>${m.name}</strong>
+            <p class="muted">${m.location}</p>
+          </div>
+        </div>
+      `).join('')
+    : '<p class="muted">暂无商家。</p>';
+
+  els.adminPanel.innerHTML = `
+    <div class="section-heading"><h3>商家列表</h3><span class="badge">${merchants.length} 家</span></div>
+    <div class="merchant-list">${listHtml}</div>
+    <div class="profile-actions">
+      <button class="secondary" onclick="renderAdmin()">返回</button>
+    </div>
+  `;
+}
+
+function selectAdminMerchant(merchantId) {
+  state.selectedMerchantId = merchantId;
+  state.adminMerchantDetail = true;
+  renderAdminMerchantDetail();
+}
+
+function renderAdminMerchantDetail() {
+  const merchant = state.merchants.find(m => m.id === state.selectedMerchantId);
+  if (!merchant) {
+    els.adminPanel.innerHTML = `
+      <p class="muted">商家不存在。</p>
+      <button class="secondary" onclick="renderAdminMerchantList()">返回</button>
+    `;
+    return;
+  }
+
+  const images = state.merchantImages[merchant.id] || [];
+  const imagesHtml = images.length > 0
+    ? `<div class="photo-strip photo-strip-admin">${images
+        .map((img, i) => `
+          <div class="photo-item">
+            <img src="${img}" alt="${merchant.name} 图片 ${i + 1}" />
+            <button class="photo-delete-btn" onclick="deleteMerchantImage('${merchant.id}', '${img}')">×</button>
+          </div>
+        `).join('')}</div>`
+    : '<p class="muted">暂无照片</p>';
+
+  els.adminPanel.innerHTML = `
+    <img class="detail-cover" src="${merchant.cover}" alt="${merchant.name} 封面图" />
+    <div class="section-heading">
+      <div>
+        <h3>${merchant.name}</h3>
+        <p class="muted">${merchant.location}</p>
+      </div>
+    </div>
+    ${merchant.description ? `<p>${merchant.description}</p>` : ''}
+    <div class="section-heading">
+      <h3>商家照片</h3>
+      <label class="photo-upload-btn">
+        <input type="file" accept="image/*" onchange="uploadMerchantImage('${merchant.id}', this)" />
+        <span>修改照片</span>
+      </label>
+    </div>
+    ${imagesHtml}
+    <div class="profile-actions">
+      <button class="primary" onclick="deleteMerchant('${merchant.id}')">删除商家</button>
+      <button class="secondary" onclick="renderAdminMerchantList()">返回</button>
+    </div>
+  `;
+}
+
+async function deleteMerchant(merchantId) {
+  if (!confirm('确定要删除该商家吗？此操作不可恢复。')) return;
+  
+  const client = await ensureSupabaseClient();
+  if (!client) return;
+
+  const { error } = await client
+    .from('merchants')
+    .delete()
+    .eq('id', merchantId);
+
+  if (error) {
+    alert(`删除失败：${error.message}`);
+    return;
+  }
+
+  alert('商家已删除！');
+  await loadMerchants();
+  renderAdminMerchantList();
 }
 
 async function openAuthDialog() {
@@ -763,7 +843,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 window.submitFeedback = () => {
   if (!requireLogin('提交反馈')) return;
-  alert('反馈功能开发中，请联系管理员QQ：3425749029');
+  alert('反馈功能开发中，反馈问题或建议请联系安财经济学院融媒体中心QQ：3425749029。非常感谢您的反馈！');
 };
 
 window.approveMerchant = async (merchantId) => {
@@ -1003,6 +1083,9 @@ window.openAdminWorkbench = () => {
 };
 window.renderAdminPendingMerchants = renderAdminPendingMerchants;
 window.renderAdminReportedReviews = renderAdminReportedReviews;
+window.renderAdminMerchantList = renderAdminMerchantList;
+window.selectAdminMerchant = selectAdminMerchant;
+window.deleteMerchant = deleteMerchant;
 window.resetPassword = () => {
   alert('此操作应通过 Supabase Edge Function 执行，并在函数内校验管理员身份。');
 };
