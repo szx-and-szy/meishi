@@ -46,9 +46,6 @@
 
         <section id="profileView" class="view-panel panel-stack is-hidden" data-view="profile">
           <article class="card">
-            <div class="section-heading">
-              <h2>个人中心</h2>
-            </div>
             <div id="profilePanel" class="panel-stack"></div>
           </article>
         </section>
@@ -168,6 +165,33 @@
         <menu>
           <button value="cancel">取消</button>
           <button id="confirmReview" value="default" class="primary">提交</button>
+        </menu>
+      </form>
+    </dialog>
+
+    <dialog id="editProfileDialog">
+      <form method="dialog" class="dialog-form">
+        <h3>编辑个人资料</h3>
+        <label>
+          新昵称
+          <input id="editNickname" type="text" maxlength="20" placeholder="请输入新昵称" />
+        </label>
+        <hr />
+        <label>
+          当前密码
+          <input id="currentPassword" type="password" placeholder="请输入当前密码" />
+        </label>
+        <label>
+          新密码
+          <input id="newPassword" type="password" placeholder="请输入新密码" />
+        </label>
+        <label>
+          确认新密码
+          <input id="confirmNewPassword" type="password" placeholder="请再次输入新密码" />
+        </label>
+        <menu>
+          <button value="cancel">取消</button>
+          <button id="confirmEditProfile" value="default" class="primary">保存</button>
         </menu>
       </form>
     </dialog>
