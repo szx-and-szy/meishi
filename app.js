@@ -755,7 +755,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 window.submitFeedback = () => {
   if (!requireLogin('提交反馈')) return;
-  alert('反馈功能开发中，请联系管理员QQ：3425749029');
+  alert('反馈功能开发中，若有问题或建议请联系管理员安财经济学院融媒体中心QQ：3425749029，反馈被采纳将提供志愿学分。');
 };
 
 window.approveMerchant = async (merchantId) => {
