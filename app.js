@@ -213,6 +213,7 @@ const els = {
   reviewRating: document.getElementById('reviewRating'),
   reviewContent: document.getElementById('reviewContent'),
   confirmReview: document.getElementById('confirmReview'),
+  ratingSelector: document.getElementById('ratingSelector'),
   editProfileDialog: document.getElementById('editProfileDialog'),
   editNickname: document.getElementById('editNickname'),
   currentPassword: document.getElementById('currentPassword'),
@@ -409,7 +410,7 @@ function renderDetail() {
   }
   
   const adminPhotoUploadHtml = isAdmin
-    ? `<div class="section-heading"><h3>商家照片</h3><label class="photo-upload-btn"><input type="file" accept="image/*" onchange="uploadMerchantImage('${merchant.id}', this)" /><span>上传照片</span></label></div>`
+    ? `<div class="section-heading"><label class="photo-upload-btn"><input type="file" accept="image/*" onchange="uploadMerchantImage('${merchant.id}', this)" /><span>修改照片</span></label></div>`
     : '';
 
   els.merchantDetail.className = 'merchant-detail panel-stack';
@@ -442,7 +443,8 @@ function renderProfile() {
     return;
   }
 
-  const adminEntry = ['admin', 'super_admin'].includes(state.currentUser.role)
+  const isAdmin = ['admin', 'super_admin'].includes(state.currentUser.role);
+  const adminEntry = isAdmin
     ? '<button class="secondary" onclick="openAdminWorkbench()">管理员工作台</button>'
     : '';
 
@@ -526,7 +528,17 @@ async function renderAdmin() {
     return;
   }
 
-  const { pendingMerchants, reportedReviews } = await loadAdminData();
+  els.adminPanel.innerHTML = `
+    <div class="profile-actions">
+      <button class="primary" onclick="renderAdminPendingMerchants()">待审核商家</button>
+      <button class="secondary" onclick="renderAdminReportedReviews()">举报审核</button>
+      <button class="secondary" onclick="setActiveView('profile')">返回个人中心</button>
+    </div>
+  `;
+}
+
+async function renderAdminPendingMerchants() {
+  const { pendingMerchants } = await loadAdminData();
 
   const pendingHtml = pendingMerchants.length > 0
     ? pendingMerchants.map(m => {
@@ -554,6 +566,18 @@ async function renderAdmin() {
       }).join('')
     : '<p class="muted">暂无待审商家。</p>';
 
+  els.adminPanel.innerHTML = `
+    <div class="section-heading"><h3>待审商家</h3><span class="badge">${pendingMerchants.length} 家</span></div>
+    <div class="review-list">${pendingHtml}</div>
+    <div class="profile-actions">
+      <button class="secondary" onclick="renderAdmin()">返回</button>
+    </div>
+  `;
+}
+
+async function renderAdminReportedReviews() {
+  const { reportedReviews } = await loadAdminData();
+
   const reportedHtml = reportedReviews.length > 0
     ? reportedReviews.map(r => `
         <div class="review-card">
@@ -571,12 +595,10 @@ async function renderAdmin() {
     : '<p class="muted">暂无达到 20 次举报的评价。</p>';
 
   els.adminPanel.innerHTML = `
-    <div class="section-heading"><h3>待审商家</h3><span class="badge">${pendingMerchants.length} 家</span></div>
-    <div class="review-list">${pendingHtml}</div>
     <div class="section-heading"><h3>举报审核队列</h3><span class="badge">${reportedReviews.length} 条</span></div>
     <div class="review-list">${reportedHtml}</div>
     <div class="profile-actions">
-      <button class="secondary" onclick="setActiveView('profile')">返回个人中心</button>
+      <button class="secondary" onclick="renderAdmin()">返回</button>
     </div>
   `;
 }
@@ -684,18 +706,52 @@ window.writeReview = async () => {
     .eq('user_id', user.id)
     .single();
 
+  const ratingSelector = document.getElementById('ratingSelector');
+  const stars = ratingSelector.querySelectorAll('span');
+  stars.forEach(star => star.innerHTML = STAR_SVG);
+
   if (existingReview) {
     els.reviewRating.value = existingReview.rating;
     els.reviewContent.value = existingReview.content || '';
     state.editingReviewId = existingReview.id;
+    updateStarDisplay(existingReview.rating);
   } else {
     els.reviewRating.value = '5';
     els.reviewContent.value = '';
     state.editingReviewId = null;
+    updateStarDisplay(5);
   }
 
   els.reviewDialog.showModal();
 };
+
+function updateStarDisplay(rating) {
+  const ratingSelector = document.getElementById('ratingSelector');
+  const stars = ratingSelector.querySelectorAll('span');
+  stars.forEach((star, index) => {
+    if (index < rating) {
+      star.classList.remove('rating-star-empty');
+      star.classList.add('rating-star-filled');
+    } else {
+      star.classList.remove('rating-star-filled');
+      star.classList.add('rating-star-empty');
+    }
+  });
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  const ratingSelector = document.getElementById('ratingSelector');
+  if (ratingSelector) {
+    ratingSelector.addEventListener('click', (e) => {
+      const star = e.target.closest('span');
+      if (star) {
+        const value = parseInt(star.dataset.value, 10);
+        els.reviewRating.value = value;
+        updateStarDisplay(value);
+      }
+    });
+  }
+});
 
 window.submitFeedback = () => {
   if (!requireLogin('提交反馈')) return;
@@ -937,6 +993,8 @@ window.openAdminWorkbench = () => {
   }
   setActiveView('admin');
 };
+window.renderAdminPendingMerchants = renderAdminPendingMerchants;
+window.renderAdminReportedReviews = renderAdminReportedReviews;
 window.resetPassword = () => {
   alert('此操作应通过 Supabase Edge Function 执行，并在函数内校验管理员身份。');
 };
