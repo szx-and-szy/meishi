@@ -1,20 +1,22 @@
 :root {
   color-scheme: light;
-  --bg: #f5f7fb;
+  --bg: #fffbf5;
   --surface: #ffffff;
   --text: #172033;
   --muted: #60708f;
-  --primary: #3b82f6;
-  --primary-dark: #1d4ed8;
-  --border: #d9e1ef;
+  --primary: #f97316;
+  --primary-dark: #ea580c;
+  --primary-light: #fff7ed;
+  --accent: #ef4444;
+  --border: #fed7aa;
   --danger: #dc2626;
-  --warning: #f59e0b;
+  --warning: #eab308;
   --success: #16a34a;
-  --shadow: 0 18px 40px rgba(25, 50, 90, 0.08);
+  --shadow: 0 18px 40px rgba(249, 115, 22, 0.1);
   font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  background: var(--bg);
+  color: var(--text);
 }
-
-* { box-sizing: border-box; }
 body {
   margin: 0;
   background: var(--bg);
@@ -48,7 +50,7 @@ button, input, select, textarea {
 }
 .eyebrow {
   margin: 0 0 4px;
-  color: var(--primary-dark);
+  color: #c2410c;
   font-size: 12px;
   font-weight: 700;
   text-transform: uppercase;
@@ -74,7 +76,7 @@ h1, h2, h3, p { margin: 0; }
   cursor: pointer;
 }
 .primary { background: var(--primary); color: white; }
-.secondary { background: #e8f0ff; color: var(--primary-dark); }
+.secondary { background: #fff7ed; color: #c2410c; }
 .filters { display: grid; gap: 12px; }
 input, select, textarea {
   width: 100%;
@@ -116,8 +118,8 @@ input, select, textarea {
   gap: 6px;
   padding: 6px 10px;
   border-radius: 999px;
-  background: #eff6ff;
-  color: var(--primary-dark);
+  background: #fff7ed;
+  color: #c2410c;
   font-size: 12px;
   font-weight: 700;
   white-space: nowrap;
@@ -138,6 +140,12 @@ input, select, textarea {
 .rating-star {
   color: #f59e0b;
   font-size: 22px;
+  display: inline-flex;
+  align-items: center;
+}
+.rating-star svg {
+  width: 1em;
+  height: 1em;
 }
 .rating-small {
   font-size: 14px;
@@ -290,7 +298,7 @@ input, select, textarea {
   height: 32px;
   border-radius: 50%;
   object-fit: cover;
-  background: #e8f0ff;
+  background: #fff7ed;
 }
 .profile-actions {
   display: grid;
