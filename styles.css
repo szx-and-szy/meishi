@@ -121,6 +121,10 @@ input, select, textarea {
   font-size: 12px;
   font-weight: 700;
 }
+.badge-dark {
+  background: #172033;
+  color: #ffffff;
+}
 .empty-state {
   min-height: 160px;
   display: grid;
