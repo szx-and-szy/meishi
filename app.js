@@ -211,6 +211,12 @@ const els = {
   reviewRating: document.getElementById('reviewRating'),
   reviewContent: document.getElementById('reviewContent'),
   confirmReview: document.getElementById('confirmReview'),
+  editProfileDialog: document.getElementById('editProfileDialog'),
+  editNickname: document.getElementById('editNickname'),
+  currentPassword: document.getElementById('currentPassword'),
+  newPassword: document.getElementById('newPassword'),
+  confirmNewPassword: document.getElementById('confirmNewPassword'),
+  confirmEditProfile: document.getElementById('confirmEditProfile'),
 };
 
 function studentIdValid(studentId) {
@@ -330,7 +336,7 @@ function renderMerchants() {
           <div class="merchant-content">
             <div class="section-heading">
               <h3>${merchant.name}</h3>
-              <span class="badge">评分 ${merchant.bayes.toFixed(2)}</span>
+              <span class="rating"><span class="rating-star">★</span>${merchant.bayes.toFixed(1)}</span>
             </div>
             <div class="merchant-meta">
               <span>${merchant.location}</span>
@@ -369,7 +375,7 @@ function renderDetail() {
               <button class="report-button" onclick="reportReview('${review.id}')">举报</button>
             </div>
             <div class="review-row">
-              <span class="badge">${'★'.repeat(review.rating)}${'☆'.repeat(5 - review.rating)}</span>
+              <span class="rating rating-small"><span class="rating-star">★</span>${review.rating}.0</span>
               <small>${review.createdAt}</small>
             </div>
             <p>${review.content || '<span class="muted">用户未填写文字评价。</span>'}</p>
@@ -388,10 +394,10 @@ function renderDetail() {
         <h3>${merchant.name}</h3>
         <p class="muted">${merchant.location}</p>
       </div>
-      <span class="badge">总分 ${summary.average.toFixed(1)}</span>
+      <span class="rating"><span class="rating-star">★</span>${summary.average.toFixed(1)}</span>
     </div>
     <div class="merchant-meta">
-      <span>评价数 ${summary.reviewCount}</span>
+      <span>${summary.reviewCount} 条评价</span>
     </div>
     <div class="photo-strip">${images
       .map((image, index) => `<img src="${image}" alt="${merchant.name} 图片 ${index + 1}" />`)
@@ -441,6 +447,7 @@ function renderProfile() {
     </div>
     <div class="profile-actions">
       <button class="primary" onclick="openMerchantUpload()">上传商家</button>
+      <button class="secondary" onclick="openEditProfile()">编辑个人资料</button>
       <button class="secondary" onclick="submitFeedback()">提交反馈</button>
       ${adminEntry}
       <button class="secondary" onclick="logout()">退出登录</button>
@@ -718,6 +725,18 @@ window.dismissReports = async (reviewId) => {
 
   alert('已忽略举报，举报计数已重置。');
   await renderAdmin();
+};
+
+window.openEditProfile = () => {
+  if (!state.currentUser) {
+    alert('请先登录。');
+    return;
+  }
+  els.editNickname.value = state.currentUser.nickname || '';
+  els.currentPassword.value = '';
+  els.newPassword.value = '';
+  els.confirmNewPassword.value = '';
+  els.editProfileDialog.showModal();
 };
 
 window.logout = async () => {
@@ -1103,4 +1122,94 @@ els.confirmReview.addEventListener('click', async (event) => {
   alert('评价提交成功！');
   await loadMerchants();
   renderDetail();
+});
+
+els.confirmEditProfile.addEventListener('click', async (event) => {
+  event.preventDefault();
+
+  const newNickname = els.editNickname.value.trim();
+  const currentPwd = els.currentPassword.value;
+  const newPwd = els.newPassword.value;
+  const confirmPwd = els.confirmNewPassword.value;
+
+  if (!newNickname && !currentPwd && !newPwd) {
+    alert('请至少修改一项内容。');
+    return;
+  }
+
+  if (newNickname && newNickname.length > 20) {
+    alert('昵称不能超过20个字符。');
+    return;
+  }
+
+  if (newPwd || confirmPwd || currentPwd) {
+    if (!currentPwd) {
+      alert('请输入当前密码。');
+      return;
+    }
+    if (!newPwd) {
+      alert('请输入新密码。');
+      return;
+    }
+    if (newPwd !== confirmPwd) {
+      alert('两次输入的新密码不一致。');
+      return;
+    }
+    if (newPwd.length < 6) {
+      alert('新密码至少6个字符。');
+      return;
+    }
+  }
+
+  const client = await ensureSupabaseClient();
+  if (!client) {
+    alert('Supabase SDK 加载失败。');
+    return;
+  }
+
+  const { data: { user } } = await client.auth.getUser();
+  if (!user) {
+    alert('请先登录。');
+    return;
+  }
+
+  if (currentPwd && newPwd) {
+    const email = user.email;
+    const { error: signInError } = await client.auth.signInWithPassword({
+      email,
+      password: currentPwd,
+    });
+
+    if (signInError) {
+      alert('当前密码错误。');
+      return;
+    }
+
+    const { error: updateError } = await client.auth.updateUser({
+      password: newPwd,
+    });
+
+    if (updateError) {
+      alert(`密码修改失败：${updateError.message}`);
+      return;
+    }
+  }
+
+  if (newNickname && newNickname !== state.currentUser.nickname) {
+    const { error: nicknameError } = await client
+      .from('users')
+      .update({ nickname: newNickname })
+      .eq('id', user.id);
+
+    if (nicknameError) {
+      alert(`昵称修改失败：${nicknameError.message}`);
+      return;
+    }
+
+    state.currentUser.nickname = newNickname;
+  }
+
+  els.editProfileDialog.close();
+  alert('个人资料已更新！');
+  await loadCurrentUser();
 });
