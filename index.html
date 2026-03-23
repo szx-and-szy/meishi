@@ -17,10 +17,16 @@
     <div class="app-shell">
       <header id="topbar" class="topbar card">
         <input id="searchInput" type="search" placeholder="搜索商家名称" maxlength="20" />
-        <label id="locationBar" class="location-picker">
-          <span>位置</span>
-          <select id="locationSelect"></select>
-        </label>
+        <div class="filter-bar">
+          <label class="filter-item">
+            <span>位置</span>
+            <select id="locationSelect"></select>
+          </label>
+          <label class="filter-item">
+            <span>评分</span>
+            <select id="ratingSortSelect"></select>
+          </label>
+        </div>
       </header>
 
       <main class="content">
@@ -65,7 +71,10 @@
 
     <dialog id="authDialog">
       <form method="dialog" class="dialog-form">
-        <h3>学号登录</h3>
+        <div class="dialog-header">
+          <h3>学号登录</h3>
+          <button id="openRegisterButton" type="button" class="secondary">注册</button>
+        </div>
         <label>
           学号
           <input id="studentIdInput" type="text" inputmode="numeric" placeholder="请输入学号" />
@@ -76,8 +85,7 @@
         </label>
         <menu class="auth-buttons">
           <button id="forgotPasswordButton" type="button" class="link-button">忘记密码</button>
-          <button id="confirmLogin" value="default" class="primary">登录</button>
-          <button id="openRegisterButton" type="button" class="secondary">注册</button>
+          <button id="confirmLogin" value="default" class="primary login-btn">登录</button>
         </menu>
       </form>
     </dialog>
