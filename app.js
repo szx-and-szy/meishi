@@ -22,19 +22,49 @@ const supabaseConfig = window.__SUPABASE_CONFIG__ || {};
 const supabaseUrl = supabaseConfig.url || '';
 const supabaseAnonKey = supabaseConfig.anonKey || '';
 const authEmailDomain = supabaseConfig.emailDomain || 'meishi.local';
-const supabase = supabaseUrl && supabaseAnonKey && window.supabase && typeof window.supabase.createClient === 'function'
-  ? window.supabase.createClient(supabaseUrl, supabaseAnonKey)
-  : null;
+let supabase = null;
+let supabasePromise = null;
+
+async function ensureSupabaseClient() {
+  if (supabase) return supabase;
+  if (!supabaseUrl || !supabaseAnonKey) return null;
+
+  if (window.supabase && typeof window.supabase.createClient === 'function') {
+    supabase = window.supabase.createClient(supabaseUrl, supabaseAnonKey);
+    return supabase;
+  }
+
+  if (!supabasePromise) {
+    supabasePromise = new Promise((resolve) => {
+      const script = document.createElement('script');
+      script.src = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2';
+      script.async = true;
+      script.onload = () => {
+        if (window.supabase && typeof window.supabase.createClient === 'function') {
+          supabase = window.supabase.createClient(supabaseUrl, supabaseAnonKey);
+          resolve(supabase);
+          return;
+        }
+        resolve(null);
+      };
+      script.onerror = () => resolve(null);
+      document.head.appendChild(script);
+    });
+  }
+
+  return supabasePromise;
+}
 
 function studentIdToEmail(studentId) {
   return `${studentId}@${authEmailDomain}`;
 }
 
 async function loadCurrentUser() {
-  if (!supabase) return;
+  const client = await ensureSupabaseClient();
+  if (!client) return;
   const {
     data: { session },
-  } = await supabase.auth.getSession();
+  } = await client.auth.getSession();
 
   if (!session?.user) {
     state.currentUser = null;
@@ -43,7 +73,7 @@ async function loadCurrentUser() {
     return;
   }
 
-  const { data: profile, error } = await supabase
+  const { data: profile, error } = await client
     .from('users')
     .select('student_id, nickname, role')
     .eq('id', session.user.id)
@@ -337,9 +367,14 @@ function renderAdmin() {
   `;
 }
 
-function openAuthDialog() {
-  if (!supabase) {
+async function openAuthDialog() {
+  if (!supabaseUrl || !supabaseAnonKey) {
     alert('请先在 window.__SUPABASE_CONFIG__ 中配置 Supabase URL 和 anon key。');
+    return;
+  }
+  const client = await ensureSupabaseClient();
+  if (!client) {
+    alert('Supabase SDK 加载失败，请检查网络或稍后重试。');
     return;
   }
   els.authDialog.showModal();
@@ -415,13 +450,14 @@ els.confirmLogin.addEventListener('click', async (event) => {
     alert('请输入密码。');
     return;
   }
-  if (!supabase) {
-    alert('请先配置 Supabase。');
+  const client = await ensureSupabaseClient();
+  if (!client) {
+    alert('Supabase SDK 加载失败，请检查网络或稍后重试。');
     return;
   }
 
   const email = studentIdToEmail(studentId);
-  const { error } = await supabase.auth.signInWithPassword({ email, password });
+  const { error } = await client.auth.signInWithPassword({ email, password });
 
   if (error) {
     alert(`登录失败：${error.message}`);
@@ -475,13 +511,14 @@ els.confirmRegister.addEventListener('click', async (event) => {
     alert('请输入密码。');
     return;
   }
-  if (!supabase) {
-    alert('请先配置 Supabase。');
+  const client = await ensureSupabaseClient();
+  if (!client) {
+    alert('Supabase SDK 加载失败，请检查网络或稍后重试。');
     return;
   }
 
   const email = studentIdToEmail(studentId);
-  const { data, error } = await supabase.auth.signUp({
+  const { data, error } = await client.auth.signUp({
     email,
     password,
   });
@@ -501,7 +538,7 @@ els.confirmRegister.addEventListener('click', async (event) => {
     return;
   }
 
-  const { error: profileError } = await supabase.from('users').insert({
+  const { error: profileError } = await client.from('users').insert({
     id: authUser.id,
     student_id: studentId,
     nickname,
