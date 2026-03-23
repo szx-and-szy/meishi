@@ -386,6 +386,30 @@ function renderDetail() {
     .join('');
 
   const images = state.merchantImages[merchant.id] || [];
+  const isAdmin = ['admin', 'super_admin'].includes(state.currentUser?.role);
+  
+  let photoStripHtml = '';
+  if (images.length > 0) {
+    if (isAdmin) {
+      photoStripHtml = `<div class="photo-strip photo-strip-admin">${images
+        .map((image, index) => `
+          <div class="photo-item">
+            <img src="${image}" alt="${merchant.name} 图片 ${index + 1}" />
+            <button class="photo-delete-btn" onclick="deleteMerchantImage('${merchant.id}', '${image}')">×</button>
+          </div>
+        `)
+        .join('')}</div>`;
+    } else {
+      photoStripHtml = `<div class="photo-strip">${images
+        .map((image, index) => `<img src="${image}" alt="${merchant.name} 图片 ${index + 1}" />`)
+        .join('')}</div>`;
+    }
+  }
+  
+  const adminPhotoUploadHtml = isAdmin
+    ? `<div class="section-heading"><h3>商家照片</h3><label class="photo-upload-btn"><input type="file" accept="image/*" onchange="uploadMerchantImage('${merchant.id}', this)" /><span>上传照片</span></label></div>`
+    : '';
+
   els.merchantDetail.className = 'merchant-detail panel-stack';
   els.merchantDetail.innerHTML = `
     <img class="detail-cover" src="${merchant.cover}" alt="${merchant.name} 封面图" />
@@ -399,9 +423,8 @@ function renderDetail() {
     <div class="merchant-meta">
       <span>${summary.reviewCount} 条评价</span>
     </div>
-    <div class="photo-strip">${images
-      .map((image, index) => `<img src="${image}" alt="${merchant.name} 图片 ${index + 1}" />`)
-      .join('')}</div>
+    ${adminPhotoUploadHtml}
+    ${photoStripHtml}
     <div class="section-heading"><h3>评价列表</h3><button class="primary" onclick="writeReview()">评价</button></div>
     <div class="review-list">${reviewsHtml}</div>
   `;
@@ -461,9 +484,24 @@ async function loadAdminData() {
 
   const { data: pendingMerchants } = await client
     .from('merchants')
-    .select('id, name, location, created_at')
+    .select('id, name, location, created_at, description, cover_image_url')
     .eq('status', 'pending')
     .order('created_at', { ascending: false });
+
+  const pendingWithImages = [];
+  if (pendingMerchants && pendingMerchants.length > 0) {
+    for (const m of pendingMerchants) {
+      const { data: images } = await client
+        .from('merchant_images')
+        .select('image_url')
+        .eq('merchant_id', m.id)
+        .order('sort_order', { ascending: true });
+      pendingWithImages.push({
+        ...m,
+        images: images ? images.map(img => img.image_url) : [],
+      });
+    }
+  }
 
   const { data: reportedReviews } = await client
     .from('reviews')
@@ -472,7 +510,7 @@ async function loadAdminData() {
     .order('report_count', { ascending: false });
 
   return {
-    pendingMerchants: pendingMerchants || [],
+    pendingMerchants: pendingWithImages,
     reportedReviews: reportedReviews || [],
   };
 }
@@ -490,18 +528,29 @@ async function renderAdmin() {
   const { pendingMerchants, reportedReviews } = await loadAdminData();
 
   const pendingHtml = pendingMerchants.length > 0
-    ? pendingMerchants.map(m => `
-        <div class="review-card">
-          <div class="review-row">
-            <strong>${m.name}</strong>
-            <span class="badge">${m.location}</span>
+    ? pendingMerchants.map(m => {
+        const imagesHtml = m.images && m.images.length > 0
+          ? `<div class="photo-strip">${m.images.map((img, i) => `<img src="${img}" alt="${m.name} 图片 ${i + 1}" />`).join('')}</div>`
+          : '';
+        const coverHtml = m.cover_image_url
+          ? `<img src="${m.cover_image_url}" alt="${m.name} 封面" class="detail-cover" style="max-height: 150px;" />`
+          : '';
+        return `
+          <div class="review-card">
+            <div class="review-row">
+              <strong>${m.name}</strong>
+              <span class="badge">${m.location}</span>
+            </div>
+            ${coverHtml}
+            ${m.description ? `<p class="muted">${m.description}</p>` : ''}
+            ${imagesHtml}
+            <div class="profile-actions">
+              <button class="primary" onclick="approveMerchant('${m.id}')">通过</button>
+              <button class="secondary" onclick="rejectMerchant('${m.id}')">拒绝</button>
+            </div>
           </div>
-          <div class="profile-actions">
-            <button class="primary" onclick="approveMerchant('${m.id}')">通过</button>
-            <button class="secondary" onclick="rejectMerchant('${m.id}')">拒绝</button>
-          </div>
-        </div>
-      `).join('')
+        `;
+      }).join('')
     : '<p class="muted">暂无待审商家。</p>';
 
   const reportedHtml = reportedReviews.length > 0
@@ -725,6 +774,125 @@ window.dismissReports = async (reviewId) => {
 
   alert('已忽略举报，举报计数已重置。');
   await renderAdmin();
+};
+
+window.uploadMerchantImage = async (merchantId, inputElement) => {
+  const file = inputElement.files[0];
+  if (!file) return;
+
+  if (!file.type.startsWith('image/')) {
+    alert('请选择图片文件。');
+    inputElement.value = '';
+    return;
+  }
+
+  const client = await ensureSupabaseClient();
+  if (!client) {
+    alert('Supabase SDK 加载失败。');
+    return;
+  }
+
+  const { data: { user } } = await client.auth.getUser();
+  if (!user) {
+    alert('请先登录。');
+    return;
+  }
+
+  try {
+    const compressedBlob = await compressImage(file, 1200, 0.8);
+    const fileName = `${merchantId}/${Date.now()}.webp`;
+
+    const { error: uploadError } = await client.storage
+      .from('merchant-images')
+      .upload(fileName, compressedBlob, {
+        contentType: 'image/webp',
+      });
+
+    if (uploadError) {
+      alert(`图片上传失败：${uploadError.message}`);
+      return;
+    }
+
+    const { data: urlData } = client.storage
+      .from('merchant-images')
+      .getPublicUrl(fileName);
+
+    const imageUrl = urlData.publicUrl;
+
+    const { data: existingImages } = await client
+      .from('merchant_images')
+      .select('sort_order')
+      .eq('merchant_id', merchantId)
+      .order('sort_order', { ascending: false })
+      .limit(1);
+
+    const nextSortOrder = existingImages && existingImages.length > 0
+      ? existingImages[0].sort_order + 1
+      : 0;
+
+    const { error: insertError } = await client
+      .from('merchant_images')
+      .insert({
+        merchant_id: merchantId,
+        image_url: imageUrl,
+        sort_order: nextSortOrder,
+      });
+
+    if (insertError) {
+      alert(`图片保存失败：${insertError.message}`);
+      return;
+    }
+
+    inputElement.value = '';
+    alert('照片上传成功！');
+    await loadMerchants();
+    renderDetail();
+  } catch (err) {
+    alert(`图片处理失败：${err.message}`);
+  }
+};
+
+window.deleteMerchantImage = async (merchantId, imageUrl) => {
+  if (!confirm('确定要删除这张照片吗？')) return;
+
+  const client = await ensureSupabaseClient();
+  if (!client) {
+    alert('Supabase SDK 加载失败。');
+    return;
+  }
+
+  const { data: { user } } = await client.auth.getUser();
+  if (!user) {
+    alert('请先登录。');
+    return;
+  }
+
+  const { error: deleteError } = await client
+    .from('merchant_images')
+    .delete()
+    .eq('merchant_id', merchantId)
+    .eq('image_url', imageUrl);
+
+  if (deleteError) {
+    alert(`删除失败：${deleteError.message}`);
+    return;
+  }
+
+  try {
+    const url = new URL(imageUrl);
+    const pathParts = url.pathname.split('/');
+    const bucketIndex = pathParts.findIndex(p => p === 'merchant-images');
+    if (bucketIndex !== -1) {
+      const filePath = pathParts.slice(bucketIndex + 1).join('/');
+      await client.storage.from('merchant-images').remove([filePath]);
+    }
+  } catch (e) {
+    console.warn('Storage file deletion skipped:', e);
+  }
+
+  alert('照片已删除！');
+  await loadMerchants();
+  renderDetail();
 };
 
 window.openEditProfile = () => {
