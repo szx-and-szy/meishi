@@ -130,20 +130,20 @@ input, select, textarea {
 .rating {
   display: inline-flex;
   align-items: center;
-  gap: 2px;
-  font-size: 14px;
+  gap: 4px;
+  font-size: 18px;
   font-weight: 700;
   color: #172033;
 }
 .rating-star {
   color: #f59e0b;
-  font-size: 16px;
+  font-size: 22px;
 }
 .rating-small {
-  font-size: 12px;
+  font-size: 14px;
 }
 .rating-small .rating-star {
-  font-size: 14px;
+  font-size: 18px;
 }
 .image-preview {
   display: grid;
@@ -171,6 +171,57 @@ input, select, textarea {
   aspect-ratio: 1;
   object-fit: cover;
   border-radius: 14px;
+}
+.photo-strip-admin {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(96px, 1fr));
+  gap: 8px;
+}
+.photo-item {
+  position: relative;
+}
+.photo-item img {
+  width: 100%;
+  aspect-ratio: 1;
+  object-fit: cover;
+  border-radius: 14px;
+}
+.photo-delete-btn {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: rgba(220, 38, 38, 0.9);
+  color: white;
+  border: none;
+  font-size: 16px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.photo-delete-btn:hover {
+  background: #dc2626;
+}
+.photo-upload-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  background: var(--primary);
+  color: white;
+  border-radius: 999px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+}
+.photo-upload-btn input {
+  display: none;
+}
+.photo-upload-btn:hover {
+  background: var(--primary-dark);
 }
 .review-card {
   border: 1px solid var(--border);
