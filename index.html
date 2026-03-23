@@ -121,6 +121,56 @@
       </form>
     </dialog>
 
+    <dialog id="merchantUploadDialog">
+      <form method="dialog" class="dialog-form">
+        <h3>上传商家</h3>
+        <label>
+          商家名称
+          <input id="uploadMerchantName" type="text" maxlength="20" placeholder="请输入商家名称" />
+        </label>
+        <label>
+          位置
+          <select id="uploadMerchantLocation"></select>
+        </label>
+        <label>
+          封面图片URL（可选）
+          <input id="uploadMerchantCover" type="text" placeholder="https://example.com/image.jpg" />
+        </label>
+        <label>
+          描述（可选）
+          <textarea id="uploadMerchantDesc" rows="3" placeholder="简单描述这家商家..."></textarea>
+        </label>
+        <menu>
+          <button value="cancel">取消</button>
+          <button id="confirmMerchantUpload" value="default" class="primary">提交</button>
+        </menu>
+      </form>
+    </dialog>
+
+    <dialog id="reviewDialog">
+      <form method="dialog" class="dialog-form">
+        <h3>发布评价</h3>
+        <label>
+          评分
+          <select id="reviewRating">
+            <option value="5">★★★★★ 5分</option>
+            <option value="4">★★★★☆ 4分</option>
+            <option value="3">★★★☆☆ 3分</option>
+            <option value="2">★★☆☆☆ 2分</option>
+            <option value="1">★☆☆☆☆ 1分</option>
+          </select>
+        </label>
+        <label>
+          评价内容（可选）
+          <textarea id="reviewContent" rows="4" maxlength="500" placeholder="分享你的用餐体验..."></textarea>
+        </label>
+        <menu>
+          <button value="cancel">取消</button>
+          <button id="confirmReview" value="default" class="primary">提交</button>
+        </menu>
+      </form>
+    </dialog>
+
     <script src="app.js"></script>
   </body>
 </html>
