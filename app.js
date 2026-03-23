@@ -297,7 +297,7 @@ function renderMerchants() {
               <span>${merchant.location}</span>
               <span>${merchant.reviewCount} 条评价</span>
             </div>
-            <button class="primary" onclick="selectMerchant(${merchant.id})">查看详情</button>
+            <button class="primary" onclick="selectMerchant('${merchant.id}')">查看详情</button>
           </div>
         </article>
       `,
@@ -320,7 +320,7 @@ function renderDetail() {
         <div class="review-card">
           <div class="review-row review-card-top">
             <strong>${review.avatar} ${review.user}</strong>
-            <button class="report-button" onclick="reportReview(${review.id})">举报</button>
+            <button class="report-button" onclick="reportReview('${review.id}')">举报</button>
           </div>
           <div class="review-row">
             <span class="badge">${'★'.repeat(review.rating)}${'☆'.repeat(5 - review.rating)}</span>
