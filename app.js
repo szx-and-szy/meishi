@@ -18,6 +18,55 @@ const state = {
   activeView: 'food',
 };
 
+const supabaseConfig = window.__SUPABASE_CONFIG__ || {};
+const supabaseUrl = supabaseConfig.url || '';
+const supabaseAnonKey = supabaseConfig.anonKey || '';
+const authEmailDomain = supabaseConfig.emailDomain || 'meishi.local';
+const supabase = supabaseUrl && supabaseAnonKey && window.supabase
+  ? window.supabase.createClient(supabaseUrl, supabaseAnonKey)
+  : null;
+
+function studentIdToEmail(studentId) {
+  return `${studentId}@${authEmailDomain}`;
+}
+
+async function loadCurrentUser() {
+  if (!supabase) return;
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+
+  if (!session?.user) {
+    state.currentUser = null;
+    renderProfile();
+    renderAdmin();
+    return;
+  }
+
+  const { data: profile, error } = await supabase
+    .from('users')
+    .select('student_id, nickname, role')
+    .eq('id', session.user.id)
+    .single();
+
+  if (error || !profile) {
+    state.currentUser = null;
+    renderProfile();
+    renderAdmin();
+    return;
+  }
+
+  state.currentUser = {
+    studentId: profile.student_id,
+    nickname: profile.nickname,
+    role: profile.role,
+  };
+
+  renderProfile();
+  renderAdmin();
+}
+
+
 const merchants = [
   {
     id: 1,
@@ -289,6 +338,10 @@ function renderAdmin() {
 }
 
 function openAuthDialog() {
+  if (!supabase) {
+    alert('请先在 window.__SUPABASE_CONFIG__ 中配置 Supabase URL 和 anon key。');
+    return;
+  }
   els.authDialog.showModal();
 }
 
@@ -349,7 +402,7 @@ els.searchInput.addEventListener('input', (event) => {
 els.foodTabButton.addEventListener('click', () => setActiveView('food'));
 els.profileTabButton.addEventListener('click', () => setActiveView('profile'));
 
-els.confirmLogin.addEventListener('click', (event) => {
+els.confirmLogin.addEventListener('click', async (event) => {
   event.preventDefault();
   const studentId = els.studentIdInput.value.trim();
   const password = els.passwordInput.value.trim();
@@ -361,25 +414,33 @@ els.confirmLogin.addEventListener('click', (event) => {
     alert('请输入密码。');
     return;
   }
-  state.currentUser = {
-    studentId,
-    nickname: '同学',
-    role: studentId === '20233897' ? 'super_admin' : 'user',
-  };
+  if (!supabase) {
+    alert('请先配置 Supabase。');
+    return;
+  }
+
+  const email = studentIdToEmail(studentId);
+  const { error } = await supabase.auth.signInWithPassword({ email, password });
+
+  if (error) {
+    alert(`登录失败：${error.message}`);
+    return;
+  }
+
   els.authDialog.close();
   els.passwordInput.value = '';
-  renderProfile();
-  renderAdmin();
+  await loadCurrentUser();
   setActiveView(state.activeView === 'admin' ? 'profile' : state.activeView);
 });
 
-function init() {
+async function init() {
   renderLocationOptions();
   renderMerchants();
   renderDetail();
   renderProfile();
   renderAdmin();
   setActiveView(state.activeView);
+  await loadCurrentUser();
 }
 
 init();
@@ -395,7 +456,7 @@ els.forgotPasswordButton.addEventListener('click', () => {
   els.forgotPasswordDialog.showModal();
 });
 
-els.confirmRegister.addEventListener('click', (event) => {
+els.confirmRegister.addEventListener('click', async (event) => {
   event.preventDefault();
   const studentId = els.registerStudentIdInput.value.trim();
   const nickname = els.registerNicknameInput.value.trim();
@@ -413,18 +474,48 @@ els.confirmRegister.addEventListener('click', (event) => {
     alert('请输入密码。');
     return;
   }
+  if (!supabase) {
+    alert('请先配置 Supabase。');
+    return;
+  }
 
-  state.currentUser = {
-    studentId,
+  const email = studentIdToEmail(studentId);
+  const { data, error } = await supabase.auth.signUp({
+    email,
+    password,
+  });
+
+  if (error) {
+    alert(`注册失败：${error.message}`);
+    return;
+  }
+
+  const authUser = data.user;
+  if (!authUser) {
+    alert('注册失败：未返回用户信息。');
+    return;
+  }
+  if (!data.session) {
+    alert('注册成功，但当前未建立登录会话。请在 Supabase Auth 设置中关闭 Confirm email 后重试。');
+    return;
+  }
+
+  const { error: profileError } = await supabase.from('users').insert({
+    id: authUser.id,
+    student_id: studentId,
     nickname,
     role: studentId === '20233897' ? 'super_admin' : 'user',
-  };
+  });
+
+  if (profileError) {
+    alert(`注册成功，但写入资料失败：${profileError.message}`);
+    return;
+  }
 
   els.registerDialog.close();
   els.registerNicknameInput.value = '';
   els.registerStudentIdInput.value = '';
   els.registerPasswordInput.value = '';
-  renderProfile();
-  renderAdmin();
+  await loadCurrentUser();
   setActiveView('profile');
 });
