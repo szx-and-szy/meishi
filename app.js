@@ -16,6 +16,10 @@ const state = {
   currentUser: null,
   bayesThreshold: 5,
   activeView: 'food',
+  merchants: [],
+  merchantImages: {},
+  merchantReviews: {},
+  editingReviewId: null,
 };
 
 const supabaseConfig = window.__SUPABASE_CONFIG__ || {};
@@ -95,55 +99,77 @@ async function loadCurrentUser() {
   renderAdmin();
 }
 
+async function loadMerchants() {
+  const client = await ensureSupabaseClient();
+  if (!client) {
+    state.merchants = [];
+    renderMerchants();
+    return;
+  }
 
-const merchants = [
-  {
-    id: 1,
-    name: '南苑砂锅饭',
-    location: '南苑一楼',
-    cover: 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=900&q=80',
-    images: [
-      'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=600&q=80',
-      'https://images.unsplash.com/photo-1544025162-d76694265947?auto=format&fit=crop&w=600&q=80',
-    ],
-    reviews: [
-      { id: 101, user: '小林', avatar: '🧑‍🎓', rating: 5, content: '份量足，午高峰出餐很稳。', createdAt: '2026-03-18', reportCount: 0 },
-      { id: 102, user: '阿周', avatar: '👩‍🎓', rating: 4, content: '口味偏重，但很下饭。', createdAt: '2026-03-19', reportCount: 1 },
-      { id: 103, user: 'Momo', avatar: '🧑', rating: 5, content: '', createdAt: '2026-03-20', reportCount: 0 },
-    ],
-  },
-  {
-    id: 2,
-    name: '北苑轻食碗',
-    location: '北苑二楼',
-    cover: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=900&q=80',
-    images: [
-      'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=600&q=80',
-      'https://images.unsplash.com/photo-1512621776951-a57141f2eefd?auto=format&fit=crop&w=600&q=80',
-      'https://images.unsplash.com/photo-1490645935967-10de6ba17061?auto=format&fit=crop&w=600&q=80',
-    ],
-    reviews: [
-      { id: 201, user: 'Faye', avatar: '👩', rating: 5, content: '减脂期常点，鸡胸不柴。', createdAt: '2026-03-17', reportCount: 0 },
-    ],
-  },
-  {
-    id: 3,
-    name: '青春集市烤冷面',
-    location: '青春集市',
-    cover: 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=900&q=80',
-    images: [
-      'https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=600&q=80',
-    ],
-    reviews: [
-      { id: 301, user: '大王', avatar: '🧑‍🍳', rating: 3, content: '偏油，不过加肠很香。', createdAt: '2026-03-21', reportCount: 22 },
-      { id: 302, user: 'Kiki', avatar: '👧', rating: 4, content: '晚上买的人很多。', createdAt: '2026-03-20', reportCount: 0 },
-      { id: 303, user: 'Blue', avatar: '🧑', rating: 2, content: '这次有点凉。', createdAt: '2026-03-18', reportCount: 0 },
-      { id: 304, user: 'Ray', avatar: '👨', rating: 5, content: '酱料味道不错。', createdAt: '2026-03-16', reportCount: 0 },
-      { id: 305, user: 'June', avatar: '👩', rating: 4, content: '', createdAt: '2026-03-15', reportCount: 0 },
-      { id: 306, user: 'Max', avatar: '🧑', rating: 5, content: '加蛋版本最值。', createdAt: '2026-03-14', reportCount: 0 },
-    ],
-  },
-];
+  const { data: merchantsData, error } = await client
+    .from('merchants')
+    .select('id, name, location, cover_image_url, description, status')
+    .eq('status', 'approved');
+
+  if (error || !merchantsData) {
+    state.merchants = [];
+    renderMerchants();
+    return;
+  }
+
+  state.merchants = merchantsData.map(m => ({
+    id: m.id,
+    name: m.name,
+    location: m.location,
+    cover: m.cover_image_url || 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=900&q=80',
+    description: m.description,
+    status: m.status,
+  }));
+
+  for (const merchant of state.merchants) {
+    const { data: images } = await client
+      .from('merchant_images')
+      .select('image_url')
+      .eq('merchant_id', merchant.id)
+      .order('sort_order', { ascending: true });
+    state.merchantImages[merchant.id] = images ? images.map(img => img.image_url) : [];
+  }
+
+  for (const merchant of state.merchants) {
+    const { data: reviews } = await client
+      .from('reviews')
+      .select('id, rating, content, report_count, created_at, user_id')
+      .eq('merchant_id', merchant.id)
+      .eq('status', 'visible')
+      .order('created_at', { ascending: false });
+    
+    if (reviews && reviews.length > 0) {
+      const reviewsWithUser = [];
+      for (const r of reviews) {
+        const { data: user } = await client
+          .from('users')
+          .select('nickname')
+          .eq('id', r.user_id)
+          .single();
+        reviewsWithUser.push({
+          id: r.id,
+          user: user?.nickname || '匿名用户',
+          avatar: '🧑',
+          rating: r.rating,
+          content: r.content,
+          createdAt: r.created_at.split('T')[0],
+          reportCount: r.report_count,
+        });
+      }
+      state.merchantReviews[merchant.id] = reviewsWithUser;
+    } else {
+      state.merchantReviews[merchant.id] = [];
+    }
+  }
+
+  renderMerchants();
+}
 
 const els = {
   locationSelect: document.getElementById('locationSelect'),
@@ -172,6 +198,16 @@ const els = {
   registerPasswordInput: document.getElementById('registerPasswordInput'),
   confirmLogin: document.getElementById('confirmLogin'),
   confirmRegister: document.getElementById('confirmRegister'),
+  merchantUploadDialog: document.getElementById('merchantUploadDialog'),
+  uploadMerchantName: document.getElementById('uploadMerchantName'),
+  uploadMerchantLocation: document.getElementById('uploadMerchantLocation'),
+  uploadMerchantCover: document.getElementById('uploadMerchantCover'),
+  uploadMerchantDesc: document.getElementById('uploadMerchantDesc'),
+  confirmMerchantUpload: document.getElementById('confirmMerchantUpload'),
+  reviewDialog: document.getElementById('reviewDialog'),
+  reviewRating: document.getElementById('reviewRating'),
+  reviewContent: document.getElementById('reviewContent'),
+  confirmReview: document.getElementById('confirmReview'),
 };
 
 function studentIdValid(studentId) {
@@ -197,31 +233,37 @@ function setActiveView(view) {
 }
 
 function getPlatformAverage() {
-  const reviews = merchants.flatMap((merchant) => merchant.reviews);
-  return reviews.reduce((sum, review) => sum + review.rating, 0) / reviews.length;
+  const allReviews = Object.values(state.merchantReviews).flat();
+  if (!allReviews.length) return 0;
+  return allReviews.reduce((sum, review) => sum + review.rating, 0) / allReviews.length;
 }
 
-function bayesianScore(merchant) {
-  const reviewCount = merchant.reviews.length;
-  const average = merchant.reviews.reduce((sum, review) => sum + review.rating, 0) / reviewCount;
+function bayesianScore(merchantId) {
+  const reviews = state.merchantReviews[merchantId] || [];
+  const reviewCount = reviews.length;
+  if (reviewCount === 0) return getPlatformAverage();
+  const average = reviews.reduce((sum, review) => sum + review.rating, 0) / reviewCount;
   const globalAverage = getPlatformAverage();
   const m = state.bayesThreshold;
   return (reviewCount / (reviewCount + m)) * average + (m / (reviewCount + m)) * globalAverage;
 }
 
 function merchantSummary(merchant) {
-  const reviewCount = merchant.reviews.length;
-  const average = merchant.reviews.reduce((sum, review) => sum + review.rating, 0) / reviewCount;
+  const reviews = state.merchantReviews[merchant.id] || [];
+  const reviewCount = reviews.length;
+  const average = reviewCount > 0 
+    ? reviews.reduce((sum, review) => sum + review.rating, 0) / reviewCount 
+    : 0;
   return {
     ...merchant,
     reviewCount,
     average,
-    bayes: bayesianScore(merchant),
+    bayes: bayesianScore(merchant.id),
   };
 }
 
 function getFilteredMerchants() {
-  return merchants
+  return state.merchants
     .filter((merchant) => merchant.location === state.currentLocation)
     .filter((merchant) => merchant.name.includes(state.search.trim()))
     .map(merchantSummary)
@@ -264,15 +306,15 @@ function renderMerchants() {
 }
 
 function renderDetail() {
-  const merchant = merchants.find((item) => item.id === state.selectedMerchantId);
+  const merchant = state.merchants.find((item) => item.id === state.selectedMerchantId);
   if (!merchant) {
     els.merchantDetail.className = 'merchant-detail empty-state';
     els.merchantDetail.textContent = '请选择一家商家查看详情。';
     return;
   }
   const summary = merchantSummary(merchant);
-  const reviewsHtml = merchant.reviews
-    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+  const reviews = state.merchantReviews[merchant.id] || [];
+  const reviewsHtml = reviews
     .map(
       (review) => `
         <div class="review-card">
@@ -290,6 +332,7 @@ function renderDetail() {
     )
     .join('');
 
+  const images = state.merchantImages[merchant.id] || [];
   els.merchantDetail.className = 'merchant-detail panel-stack';
   els.merchantDetail.innerHTML = `
     <img class="detail-cover" src="${merchant.cover}" alt="${merchant.name} 封面图" />
@@ -303,7 +346,7 @@ function renderDetail() {
     <div class="merchant-meta">
       <span>评价数 ${summary.reviewCount}</span>
     </div>
-    <div class="photo-strip">${merchant.images
+    <div class="photo-strip">${images
       .map((image, index) => `<img src="${image}" alt="${merchant.name} 图片 ${index + 1}" />`)
       .join('')}</div>
     <div class="section-heading"><h3>评价列表</h3><button class="primary" onclick="writeReview()">评价</button></div>
@@ -336,11 +379,34 @@ function renderProfile() {
       <button class="primary" onclick="openMerchantUpload()">上传商家</button>
       <button class="secondary" onclick="submitFeedback()">提交反馈</button>
       ${adminEntry}
+      <button class="secondary" onclick="logout()">退出登录</button>
     </div>
   `;
 }
 
-function renderAdmin() {
+async function loadAdminData() {
+  const client = await ensureSupabaseClient();
+  if (!client) return { pendingMerchants: [], reportedReviews: [] };
+
+  const { data: pendingMerchants } = await client
+    .from('merchants')
+    .select('id, name, location, created_at')
+    .eq('status', 'pending')
+    .order('created_at', { ascending: false });
+
+  const { data: reportedReviews } = await client
+    .from('reviews')
+    .select('id, rating, content, report_count, merchant_id, merchants(name)')
+    .gte('report_count', 20)
+    .order('report_count', { ascending: false });
+
+  return {
+    pendingMerchants: pendingMerchants || [],
+    reportedReviews: reportedReviews || [],
+  };
+}
+
+async function renderAdmin() {
   const isAdmin = ['admin', 'super_admin'].includes(state.currentUser?.role);
   if (!isAdmin) {
     els.adminPanel.innerHTML = `
@@ -350,17 +416,45 @@ function renderAdmin() {
     return;
   }
 
-  const reportQueue = merchants.flatMap((merchant) =>
-    merchant.reviews.filter((review) => review.reportCount >= 20).map((review) => `${merchant.name} / 评价 ${review.id}`),
-  );
+  const { pendingMerchants, reportedReviews } = await loadAdminData();
+
+  const pendingHtml = pendingMerchants.length > 0
+    ? pendingMerchants.map(m => `
+        <div class="review-card">
+          <div class="review-row">
+            <strong>${m.name}</strong>
+            <span class="badge">${m.location}</span>
+          </div>
+          <div class="profile-actions">
+            <button class="primary" onclick="approveMerchant('${m.id}')">通过</button>
+            <button class="secondary" onclick="rejectMerchant('${m.id}')">拒绝</button>
+          </div>
+        </div>
+      `).join('')
+    : '<p class="muted">暂无待审商家。</p>';
+
+  const reportedHtml = reportedReviews.length > 0
+    ? reportedReviews.map(r => `
+        <div class="review-card">
+          <div class="review-row">
+            <strong>${r.merchants?.name || '未知商家'}</strong>
+            <span class="badge status-warning">${r.report_count} 次举报</span>
+          </div>
+          <p>${r.content || '<span class="muted">无内容</span>'}</p>
+          <div class="profile-actions">
+            <button class="primary" onclick="hideReview('${r.id}')">隐藏评价</button>
+            <button class="secondary" onclick="dismissReports('${r.id}')">忽略举报</button>
+          </div>
+        </div>
+      `).join('')
+    : '<p class="muted">暂无达到 20 次举报的评价。</p>';
 
   els.adminPanel.innerHTML = `
-    <div class="stat"><div class="eyebrow">待审商家</div><strong>3 家</strong></div>
-    <div class="stat"><div class="eyebrow">举报审核队列</div><strong>${reportQueue.length} 条</strong></div>
-    <p class="muted">支持商家审核、举报处理、警告、限评、编辑封面图、按学号重置密码为学号本身。</p>
-    <ul>${reportQueue.map((item) => `<li>${item}</li>`).join('') || '<li>当前无达到 20 次举报的评价。</li>'}</ul>
+    <div class="section-heading"><h3>待审商家</h3><span class="badge">${pendingMerchants.length} 家</span></div>
+    <div class="review-list">${pendingHtml}</div>
+    <div class="section-heading"><h3>举报审核队列</h3><span class="badge">${reportedReviews.length} 条</span></div>
+    <div class="review-list">${reportedHtml}</div>
     <div class="profile-actions">
-      <button class="primary" onclick="resetPassword()">管理员重置密码</button>
       <button class="secondary" onclick="setActiveView('profile')">返回个人中心</button>
     </div>
   `;
@@ -396,21 +490,190 @@ window.selectMerchant = (merchantId) => {
   renderDetail();
   setActiveView('detail');
 };
-window.reportReview = (reviewId) => {
+
+window.reportReview = async (reviewId) => {
   if (!requireLogin('举报评价')) return;
-  alert(`已打开举报流程（示例）。同一用户对同一评价最多举报一次。评价 ID：${reviewId}`);
+
+  const client = await ensureSupabaseClient();
+  if (!client) {
+    alert('Supabase SDK 加载失败，请检查网络或稍后重试。');
+    return;
+  }
+
+  const { data: { user } } = await client.auth.getUser();
+  if (!user) {
+    alert('请先登录。');
+    return;
+  }
+
+  const { data: existingReport } = await client
+    .from('review_reports')
+    .select('id')
+    .eq('review_id', reviewId)
+    .eq('reporter_user_id', user.id)
+    .single();
+
+  if (existingReport) {
+    alert('您已经举报过这条评价了。');
+    return;
+  }
+
+  const { error: reportError } = await client
+    .from('review_reports')
+    .insert({
+      review_id: reviewId,
+      reporter_user_id: user.id,
+      reason_type: 'other',
+    });
+
+  if (reportError) {
+    alert(`举报失败：${reportError.message}`);
+    return;
+  }
+
+  alert('举报成功！感谢您的反馈。');
+  await loadMerchants();
+  renderDetail();
 };
-window.writeReview = () => {
+
+window.writeReview = async () => {
   if (!requireLogin('发布评价')) return;
-  alert('已打开评价表单（示例）。同一用户对同一商家仅保留 1 条有效评价，再次提交视为更新。');
+
+  if (!state.selectedMerchantId) {
+    alert('请先选择一个商家。');
+    return;
+  }
+
+  const client = await ensureSupabaseClient();
+  if (!client) {
+    alert('Supabase SDK 加载失败，请检查网络或稍后重试。');
+    return;
+  }
+
+  const { data: { user } } = await client.auth.getUser();
+  if (!user) {
+    alert('请先登录。');
+    return;
+  }
+
+  const { data: existingReview } = await client
+    .from('reviews')
+    .select('id, rating, content')
+    .eq('merchant_id', state.selectedMerchantId)
+    .eq('user_id', user.id)
+    .single();
+
+  if (existingReview) {
+    els.reviewRating.value = existingReview.rating;
+    els.reviewContent.value = existingReview.content || '';
+    state.editingReviewId = existingReview.id;
+  } else {
+    els.reviewRating.value = '5';
+    els.reviewContent.value = '';
+    state.editingReviewId = null;
+  }
+
+  els.reviewDialog.showModal();
 };
+
 window.submitFeedback = () => {
   if (!requireLogin('提交反馈')) return;
-  alert('已打开反馈表单（示例）。');
+  alert('反馈功能开发中，请联系管理员QQ：3425749029');
 };
-window.openMerchantUpload = () => {
+
+window.approveMerchant = async (merchantId) => {
+  const client = await ensureSupabaseClient();
+  if (!client) return;
+
+  const { error } = await client
+    .from('merchants')
+    .update({ status: 'approved' })
+    .eq('id', merchantId);
+
+  if (error) {
+    alert(`审核通过失败：${error.message}`);
+    return;
+  }
+
+  alert('商家已通过审核！');
+  await renderAdmin();
+  await loadMerchants();
+};
+
+window.rejectMerchant = async (merchantId) => {
+  const client = await ensureSupabaseClient();
+  if (!client) return;
+
+  const { error } = await client
+    .from('merchants')
+    .update({ status: 'rejected' })
+    .eq('id', merchantId);
+
+  if (error) {
+    alert(`拒绝失败：${error.message}`);
+    return;
+  }
+
+  alert('商家已被拒绝。');
+  await renderAdmin();
+};
+
+window.hideReview = async (reviewId) => {
+  const client = await ensureSupabaseClient();
+  if (!client) return;
+
+  const { error } = await client
+    .from('reviews')
+    .update({ status: 'hidden' })
+    .eq('id', reviewId);
+
+  if (error) {
+    alert(`隐藏失败：${error.message}`);
+    return;
+  }
+
+  alert('评价已隐藏。');
+  await renderAdmin();
+  await loadMerchants();
+  renderDetail();
+};
+
+window.dismissReports = async (reviewId) => {
+  const client = await ensureSupabaseClient();
+  if (!client) return;
+
+  const { error } = await client
+    .from('reviews')
+    .update({ report_count: 0 })
+    .eq('id', reviewId);
+
+  if (error) {
+    alert(`忽略举报失败：${error.message}`);
+    return;
+  }
+
+  alert('已忽略举报，举报计数已重置。');
+  await renderAdmin();
+};
+
+window.logout = async () => {
+  const client = await ensureSupabaseClient();
+  if (client) {
+    await client.auth.signOut();
+  }
+  state.currentUser = null;
+  renderProfile();
+  renderAdmin();
+  setActiveView('food');
+  alert('已退出登录。');
+};
+window.openMerchantUpload = async () => {
   if (!requireLogin('上传商家')) return;
-  alert('上传商家需要填写名称、位置，可补充最多 8 张商家图和最多 3 个菜品。');
+  els.uploadMerchantLocation.innerHTML = LOCATIONS.map(loc => `<option value="${loc}">${loc}</option>`).join('');
+  els.uploadMerchantName.value = '';
+  els.uploadMerchantCover.value = '';
+  els.uploadMerchantDesc.value = '';
+  els.merchantUploadDialog.showModal();
 };
 window.openAdminWorkbench = () => {
   const isAdmin = ['admin', 'super_admin'].includes(state.currentUser?.role);
@@ -471,12 +734,12 @@ els.confirmLogin.addEventListener('click', async (event) => {
 
 async function init() {
   renderLocationOptions();
-  renderMerchants();
-  renderDetail();
   renderProfile();
   renderAdmin();
   setActiveView(state.activeView);
   await loadCurrentUser();
+  await loadMerchants();
+  renderDetail();
 }
 
 init();
@@ -555,4 +818,104 @@ els.confirmRegister.addEventListener('click', async (event) => {
   els.registerPasswordInput.value = '';
   await loadCurrentUser();
   setActiveView('profile');
+});
+
+els.confirmMerchantUpload.addEventListener('click', async (event) => {
+  event.preventDefault();
+  const name = els.uploadMerchantName.value.trim();
+  const location = els.uploadMerchantLocation.value;
+  const coverUrl = els.uploadMerchantCover.value.trim();
+  const description = els.uploadMerchantDesc.value.trim();
+
+  if (!name) {
+    alert('请输入商家名称。');
+    return;
+  }
+  if (name.length > 20) {
+    alert('商家名称不能超过20个字符。');
+    return;
+  }
+
+  const client = await ensureSupabaseClient();
+  if (!client) {
+    alert('Supabase SDK 加载失败，请检查网络或稍后重试。');
+    return;
+  }
+
+  const { data: { user } } = await client.auth.getUser();
+  if (!user) {
+    alert('请先登录。');
+    return;
+  }
+
+  const { error } = await client.from('merchants').insert({
+    name,
+    location,
+    cover_image_url: coverUrl || null,
+    description: description || null,
+    created_by: user.id,
+    status: 'pending',
+  });
+
+  if (error) {
+    alert(`提交失败：${error.message}`);
+    return;
+  }
+
+  els.merchantUploadDialog.close();
+  alert('商家提交成功！等待管理员审核后即可显示。');
+});
+
+els.confirmReview.addEventListener('click', async (event) => {
+  event.preventDefault();
+  const rating = parseInt(els.reviewRating.value, 10);
+  const content = els.reviewContent.value.trim();
+
+  if (!state.selectedMerchantId) {
+    alert('请先选择一个商家。');
+    return;
+  }
+
+  const client = await ensureSupabaseClient();
+  if (!client) {
+    alert('Supabase SDK 加载失败，请检查网络或稍后重试。');
+    return;
+  }
+
+  const { data: { user } } = await client.auth.getUser();
+  if (!user) {
+    alert('请先登录。');
+    return;
+  }
+
+  let error;
+  if (state.editingReviewId) {
+    const result = await client
+      .from('reviews')
+      .update({ rating, content, updated_at: new Date().toISOString() })
+      .eq('id', state.editingReviewId);
+    error = result.error;
+  } else {
+    const result = await client.from('reviews').insert({
+      merchant_id: state.selectedMerchantId,
+      user_id: user.id,
+      rating,
+      content,
+      status: 'visible',
+      report_count: 0,
+    });
+    error = result.error;
+  }
+
+  if (error) {
+    alert(`提交失败：${error.message}`);
+    return;
+  }
+
+  els.reviewDialog.close();
+  els.reviewContent.value = '';
+  state.editingReviewId = null;
+  alert('评价提交成功！');
+  await loadMerchants();
+  renderDetail();
 });
