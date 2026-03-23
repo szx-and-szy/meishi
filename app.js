@@ -128,7 +128,7 @@ async function loadMerchants() {
         report_count,
         created_at,
         user_id,
-        users(nickname, avatar_url)
+        user_profiles(nickname, avatar_url)
       )
     `)
     .eq('status', 'approved');
@@ -163,8 +163,8 @@ async function loadMerchants() {
       .filter(r => r.report_count < 20)
       .map(r => ({
         id: r.id,
-        user: r.users?.nickname || '匿名用户',
-        avatarUrl: r.users?.avatar_url || null,
+        user: r.user_profiles?.nickname || '匿名用户',
+        avatarUrl: r.user_profiles?.avatar_url || null,
         rating: r.rating,
         content: r.content,
         createdAt: r.created_at?.split('T')[0] || '',
@@ -1025,7 +1025,7 @@ els.confirmLogin.addEventListener('click', async (event) => {
   const studentId = els.studentIdInput.value.trim();
   const password = els.passwordInput.value.trim();
   if (!studentIdValid(studentId)) {
-    alert('学号格式错误，必须匹配 ^202[0-9][0-9]{4}$。');
+    alert('学号错误');
     return;
   }
   if (!password) {
@@ -1174,8 +1174,12 @@ els.confirmRegister.addEventListener('click', async (event) => {
     alert('请输入昵称。');
     return;
   }
+  if (nickname.length > 20) {
+    alert('昵称不能超过20个字符。');
+    return;
+  }
   if (!studentIdValid(studentId)) {
-    alert('学号格式错误，必须匹配 ^202[0-9][0-9]{4}$。');
+    alert('学号错误');
     return;
   }
   if (!password) {
