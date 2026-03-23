@@ -69,14 +69,13 @@ h1, h2, h3, p { margin: 0; }
   box-shadow: var(--shadow);
   padding: 16px;
 }
-.primary, .secondary, .chip {
-  border: none;
+.primary, .secondary, .outline, .chip {
   border-radius: 999px;
   padding: 10px 16px;
   cursor: pointer;
 }
-.primary { background: var(--primary); color: white; }
-.secondary { background: #fed7aa; color: #c2410c; }
+.primary { background: var(--primary); color: white; border: none; }
+.secondary { background: #fed7aa; color: #c2410c; border: none; }
 .outline { background: transparent; color: var(--text); border: 1px solid var(--border); }
 .filters { display: grid; gap: 12px; }
 input, select, textarea {
@@ -348,6 +347,25 @@ dialog {
   display: grid;
   gap: 12px;
   padding: 20px;
+}
+.dialog-form label {
+  display: grid;
+  gap: 6px;
+}
+.dialog-form input,
+.dialog-form select,
+.dialog-form textarea {
+  width: auto;
+  box-sizing: border-box;
+}
+.link-button {
+  background: transparent;
+  color: var(--muted);
+  border: none;
+  text-decoration: underline;
+  cursor: pointer;
+  padding: 0;
+  font-size: 14px;
 }
 menu {
   display: flex;
