@@ -96,6 +96,7 @@ h1, h2, h3, p { margin: 0; }
   font-size: 14px;
   outline: none;
   transition: border-color 0.2s;
+  box-sizing: border-box;
 }
 .search-box input:focus {
   border-color: var(--primary);
