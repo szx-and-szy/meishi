@@ -534,7 +534,7 @@ async function renderAdmin() {
   if (!isAdmin) {
     els.adminPanel.innerHTML = `
       <p class="muted">仅管理员可以进入此页面。</p>
-      <button class="secondary" onclick="setActiveView('profile')">返回个人中心</button>
+      <button class="outline" onclick="setActiveView('profile')">返回个人中心</button>
     `;
     return;
   }
@@ -544,7 +544,7 @@ async function renderAdmin() {
       <button class="primary" onclick="renderAdminPendingMerchants()">待审核商家</button>
       <button class="secondary" onclick="renderAdminReportedReviews()">举报审核</button>
       <button class="secondary" onclick="renderAdminMerchantList()">商家列表</button>
-      <button class="secondary" onclick="setActiveView('profile')">返回个人中心</button>
+      <button class="outline" onclick="setActiveView('profile')">返回个人中心</button>
     </div>
   `;
 }
