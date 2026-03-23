@@ -76,7 +76,7 @@ h1, h2, h3, p { margin: 0; }
   cursor: pointer;
 }
 .primary { background: var(--primary); color: white; }
-.secondary { background: #fff7ed; color: #c2410c; }
+.secondary { background: #fed7aa; color: #c2410c; }
 .filters { display: grid; gap: 12px; }
 input, select, textarea {
   width: 100%;
@@ -347,6 +347,36 @@ menu {
   gap: 12px;
   padding: 0;
   margin: 0;
+}
+.dialog-buttons {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 0;
+  margin: 0;
+}
+.dialog-buttons button {
+  flex: 1;
+}
+.rating-selector {
+  display: flex;
+  gap: 8px;
+}
+.rating-selector span {
+  cursor: pointer;
+  font-size: 32px;
+  color: #d1d5db;
+  transition: color 0.2s;
+}
+.rating-selector span svg {
+  width: 1em;
+  height: 1em;
+}
+.rating-star-filled {
+  color: #f59e0b !important;
+}
+.rating-star-empty {
+  color: #d1d5db;
 }
 @media (min-width: 720px) {
   .merchant-list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
