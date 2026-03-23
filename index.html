@@ -133,9 +133,10 @@
           <select id="uploadMerchantLocation"></select>
         </label>
         <label>
-          封面图片URL（可选）
-          <input id="uploadMerchantCover" type="text" placeholder="https://example.com/image.jpg" />
+          封面图片（可选）
+          <input id="uploadMerchantCover" type="file" accept="image/*" />
         </label>
+        <div id="uploadMerchantPreview" class="image-preview"></div>
         <label>
           描述（可选）
           <textarea id="uploadMerchantDesc" rows="3" placeholder="简单描述这家商家..."></textarea>
