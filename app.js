@@ -679,6 +679,12 @@ function renderAdminMerchantDetail() {
   els.adminPanel.innerHTML = `
     <img class="detail-cover" src="${merchant.cover}" alt="${merchant.name} 封面图" />
     <div class="section-heading">
+      <label class="photo-upload-btn">
+        <input type="file" accept="image/*" onchange="updateMerchantCover('${merchant.id}', this)" />
+        <span>修改封面</span>
+      </label>
+    </div>
+    <div class="section-heading">
       <div>
         <h3>${merchant.name}</h3>
         <p class="muted">${merchant.location}</p>
@@ -689,7 +695,7 @@ function renderAdminMerchantDetail() {
       <h3>商家照片</h3>
       <label class="photo-upload-btn">
         <input type="file" accept="image/*" onchange="uploadMerchantImage('${merchant.id}', this)" />
-        <span>修改照片</span>
+        <span>添加照片</span>
       </label>
     </div>
     ${imagesHtml}
@@ -720,6 +726,61 @@ async function deleteMerchant(merchantId) {
   await loadMerchants();
   renderAdminMerchantList();
 }
+
+window.updateMerchantCover = async (merchantId, inputElement) => {
+  const file = inputElement.files[0];
+  if (!file) return;
+
+  if (!file.type.startsWith('image/')) {
+    alert('请选择图片文件。');
+    inputElement.value = '';
+    return;
+  }
+
+  const client = await ensureSupabaseClient();
+  if (!client) {
+    alert('Supabase SDK 加载失败。');
+    return;
+  }
+
+  try {
+    const compressedBlob = await compressImage(file, 1200, 0.8);
+    const fileName = `covers/${merchantId}/${Date.now()}.webp`;
+
+    const { error: uploadError } = await client.storage
+      .from('merchant-images')
+      .upload(fileName, compressedBlob, {
+        contentType: 'image/webp',
+      });
+
+    if (uploadError) {
+      alert(`封面上传失败：${uploadError.message}`);
+      return;
+    }
+
+    const { data: urlData } = client.storage
+      .from('merchant-images')
+      .getPublicUrl(fileName);
+
+    const coverUrl = urlData.publicUrl;
+
+    const { error: updateError } = await client
+      .from('merchants')
+      .update({ cover_image_url: coverUrl })
+      .eq('id', merchantId);
+
+    if (updateError) {
+      alert(`封面更新失败：${updateError.message}`);
+      return;
+    }
+
+    alert('封面已更新！');
+    await loadMerchants();
+    renderAdminMerchantDetail();
+  } catch (err) {
+    alert(`操作失败：${err.message}`);
+  }
+};
 
 async function openAuthDialog() {
   if (!supabaseUrl || !supabaseAnonKey) {
