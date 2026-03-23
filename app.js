@@ -369,12 +369,18 @@ function renderProfile() {
     ? '<button class="secondary" onclick="openAdminWorkbench()">管理员工作台</button>'
     : '';
 
+  const roleLabels = {
+    'super_admin': '超级管理员',
+    'admin': '管理员',
+    'user': '用户',
+  };
+  const roleClass = state.currentUser.role === 'super_admin' ? 'badge-dark' : '';
+
   els.profilePanel.innerHTML = `
     <div class="review-row">
       <strong>${state.currentUser.nickname}</strong>
-      <span class="badge">${state.currentUser.role}</span>
+      <span class="badge ${roleClass}">${roleLabels[state.currentUser.role] || state.currentUser.role}</span>
     </div>
-    <p class="muted">学号 ${state.currentUser.studentId} · 昵称每 7 天可修改一次 · 可删除自己的评价并重新发布。</p>
     <div class="profile-actions">
       <button class="primary" onclick="openMerchantUpload()">上传商家</button>
       <button class="secondary" onclick="submitFeedback()">提交反馈</button>
