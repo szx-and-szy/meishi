@@ -146,20 +146,21 @@
         <h3>发布评价</h3>
         <label>
           评分
-          <select id="reviewRating">
-            <option value="5">★★★★★ 5分</option>
-            <option value="4">★★★★☆ 4分</option>
-            <option value="3">★★★☆☆ 3分</option>
-            <option value="2">★★☆☆☆ 2分</option>
-            <option value="1">★☆☆☆☆ 1分</option>
-          </select>
+          <div class="rating-selector" id="ratingSelector">
+            <span class="rating-star-empty" data-value="1"></span>
+            <span class="rating-star-empty" data-value="2"></span>
+            <span class="rating-star-empty" data-value="3"></span>
+            <span class="rating-star-empty" data-value="4"></span>
+            <span class="rating-star-empty" data-value="5"></span>
+          </div>
+          <input type="hidden" id="reviewRating" value="5" />
         </label>
         <label>
           评价内容（可选）
           <textarea id="reviewContent" rows="4" maxlength="500" placeholder="分享你的用餐体验..."></textarea>
         </label>
-        <menu>
-          <button value="cancel">取消</button>
+        <menu class="dialog-buttons">
+          <button value="cancel" class="secondary">取消</button>
           <button id="confirmReview" value="default" class="primary">提交</button>
         </menu>
       </form>
