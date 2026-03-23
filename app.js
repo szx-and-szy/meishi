@@ -20,6 +20,7 @@ const state = {
   merchantImages: {},
   merchantReviews: {},
   editingReviewId: null,
+  uploadedImageUrl: null,
 };
 
 const supabaseConfig = window.__SUPABASE_CONFIG__ || {};
@@ -78,7 +79,7 @@ async function loadCurrentUser() {
 
   const { data: profile, error } = await client
     .from('users')
-    .select('student_id, nickname, role')
+    .select('student_id, nickname, role, avatar_url')
     .eq('id', user.id)
     .single();
 
@@ -93,6 +94,7 @@ async function loadCurrentUser() {
     studentId: profile.student_id,
     nickname: profile.nickname,
     role: profile.role,
+    avatarUrl: profile.avatar_url,
   };
 
   renderProfile();
@@ -149,13 +151,13 @@ async function loadMerchants() {
       for (const r of reviews) {
         const { data: user } = await client
           .from('users')
-          .select('nickname')
+          .select('nickname, avatar_url')
           .eq('id', r.user_id)
           .single();
         reviewsWithUser.push({
           id: r.id,
           user: user?.nickname || '匿名用户',
-          avatar: '🧑',
+          avatarUrl: user?.avatar_url || null,
           rating: r.rating,
           content: r.content,
           createdAt: r.created_at.split('T')[0],
@@ -203,6 +205,7 @@ const els = {
   uploadMerchantLocation: document.getElementById('uploadMerchantLocation'),
   uploadMerchantCover: document.getElementById('uploadMerchantCover'),
   uploadMerchantDesc: document.getElementById('uploadMerchantDesc'),
+  uploadMerchantPreview: document.getElementById('uploadMerchantPreview'),
   confirmMerchantUpload: document.getElementById('confirmMerchantUpload'),
   reviewDialog: document.getElementById('reviewDialog'),
   reviewRating: document.getElementById('reviewRating'),
@@ -212,6 +215,42 @@ const els = {
 
 function studentIdValid(studentId) {
   return /^202[0-9][0-9]{4}$/.test(studentId);
+}
+
+async function compressImage(file, maxWidth = 1200, quality = 0.8) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      let width = img.width;
+      let height = img.height;
+
+      if (width > maxWidth) {
+        height = (height * maxWidth) / width;
+        width = maxWidth;
+      }
+
+      canvas.width = width;
+      canvas.height = height;
+
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, width, height);
+
+      canvas.toBlob(
+        (blob) => {
+          if (blob) {
+            resolve(blob);
+          } else {
+            reject(new Error('图片压缩失败'));
+          }
+        },
+        'image/webp',
+        quality
+      );
+    };
+    img.onerror = () => reject(new Error('图片加载失败'));
+    img.src = URL.createObjectURL(file);
+  });
 }
 
 function setActiveView(view) {
@@ -316,19 +355,27 @@ function renderDetail() {
   const reviews = state.merchantReviews[merchant.id] || [];
   const reviewsHtml = reviews
     .map(
-      (review) => `
-        <div class="review-card">
-          <div class="review-row review-card-top">
-            <strong>${review.avatar} ${review.user}</strong>
-            <button class="report-button" onclick="reportReview('${review.id}')">举报</button>
+      (review) => {
+        const avatarSrc = review.avatarUrl 
+          ? review.avatarUrl 
+          : `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(review.user)}`;
+        return `
+          <div class="review-card">
+            <div class="review-row review-card-top">
+              <div class="review-user">
+                <img src="${avatarSrc}" alt="${review.user}" class="review-avatar" />
+                <strong>${review.user}</strong>
+              </div>
+              <button class="report-button" onclick="reportReview('${review.id}')">举报</button>
+            </div>
+            <div class="review-row">
+              <span class="badge">${'★'.repeat(review.rating)}${'☆'.repeat(5 - review.rating)}</span>
+              <small>${review.createdAt}</small>
+            </div>
+            <p>${review.content || '<span class="muted">用户未填写文字评价。</span>'}</p>
           </div>
-          <div class="review-row">
-            <span class="badge">${'★'.repeat(review.rating)}${'☆'.repeat(5 - review.rating)}</span>
-            <small>${review.createdAt}</small>
-          </div>
-          <p>${review.content || '<span class="muted">用户未填写文字评价。</span>'}</p>
-        </div>
-      `,
+        `;
+      },
     )
     .join('');
 
@@ -376,10 +423,21 @@ function renderProfile() {
   };
   const roleClass = state.currentUser.role === 'super_admin' ? 'badge-dark' : '';
 
+  const avatarUrl = state.currentUser.avatarUrl || 'https://api.dicebear.com/7.x/initials/svg?seed=' + encodeURIComponent(state.currentUser.nickname);
+
   els.profilePanel.innerHTML = `
-    <div class="review-row">
-      <strong>${state.currentUser.nickname}</strong>
-      <span class="badge ${roleClass}">${roleLabels[state.currentUser.role] || state.currentUser.role}</span>
+    <div class="profile-header">
+      <div class="avatar-wrapper">
+        <img src="${avatarUrl}" alt="头像" class="avatar" id="profileAvatar" />
+        <label class="avatar-upload">
+          <input type="file" accept="image/*" id="avatarInput" />
+          <span>更换</span>
+        </label>
+      </div>
+      <div class="profile-info">
+        <strong>${state.currentUser.nickname}</strong>
+        <span class="badge ${roleClass}">${roleLabels[state.currentUser.role] || state.currentUser.role}</span>
+      </div>
     </div>
     <div class="profile-actions">
       <button class="primary" onclick="openMerchantUpload()">上传商家</button>
@@ -679,6 +737,8 @@ window.openMerchantUpload = async () => {
   els.uploadMerchantName.value = '';
   els.uploadMerchantCover.value = '';
   els.uploadMerchantDesc.value = '';
+  els.uploadMerchantPreview.innerHTML = '';
+  state.uploadedImageUrl = null;
   els.merchantUploadDialog.showModal();
 };
 window.openAdminWorkbench = () => {
@@ -749,6 +809,95 @@ async function init() {
 }
 
 init();
+
+els.uploadMerchantCover.addEventListener('change', (event) => {
+  const file = event.target.files[0];
+  if (!file) {
+    els.uploadMerchantPreview.innerHTML = '';
+    return;
+  }
+
+  if (!file.type.startsWith('image/')) {
+    alert('请选择图片文件。');
+    event.target.value = '';
+    return;
+  }
+
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    els.uploadMerchantPreview.innerHTML = `<img src="${e.target.result}" alt="预览" />`;
+  };
+  reader.readAsDataURL(file);
+});
+
+document.addEventListener('change', async (event) => {
+  if (event.target.id !== 'avatarInput') return;
+
+  const file = event.target.files[0];
+  if (!file) return;
+
+  if (!file.type.startsWith('image/')) {
+    alert('请选择图片文件。');
+    event.target.value = '';
+    return;
+  }
+
+  const client = await ensureSupabaseClient();
+  if (!client) {
+    alert('Supabase SDK 加载失败。');
+    return;
+  }
+
+  const { data: { user } } = await client.auth.getUser();
+  if (!user) {
+    alert('请先登录。');
+    return;
+  }
+
+  try {
+    const compressedBlob = await compressImage(file, 200, 0.8);
+    const fileName = `${user.id}/avatar.webp`;
+
+    const { error: uploadError } = await client.storage
+      .from('avatars')
+      .upload(fileName, compressedBlob, {
+        contentType: 'image/webp',
+        upsert: true,
+      });
+
+    if (uploadError) {
+      alert(`头像上传失败：${uploadError.message}`);
+      return;
+    }
+
+    const { data: urlData } = client.storage
+      .from('avatars')
+      .getPublicUrl(fileName);
+
+    const avatarUrl = urlData.publicUrl;
+
+    const { error: updateError } = await client
+      .from('users')
+      .update({ avatar_url: avatarUrl })
+      .eq('id', user.id);
+
+    if (updateError) {
+      alert(`头像更新失败：${updateError.message}`);
+      return;
+    }
+
+    state.currentUser.avatarUrl = avatarUrl;
+    const avatarImg = document.getElementById('profileAvatar');
+    if (avatarImg) {
+      avatarImg.src = avatarUrl;
+    }
+    alert('头像更新成功！');
+    await loadMerchants();
+    renderDetail();
+  } catch (err) {
+    alert(`头像处理失败：${err.message}`);
+  }
+});
 
 
 els.openRegisterButton.addEventListener('click', () => {
@@ -830,7 +979,6 @@ els.confirmMerchantUpload.addEventListener('click', async (event) => {
   event.preventDefault();
   const name = els.uploadMerchantName.value.trim();
   const location = els.uploadMerchantLocation.value;
-  const coverUrl = els.uploadMerchantCover.value.trim();
   const description = els.uploadMerchantDesc.value.trim();
 
   if (!name) {
@@ -854,10 +1002,40 @@ els.confirmMerchantUpload.addEventListener('click', async (event) => {
     return;
   }
 
+  let coverImageUrl = state.uploadedImageUrl;
+
+  const file = els.uploadMerchantCover.files[0];
+  if (file && !coverImageUrl) {
+    try {
+      const compressedBlob = await compressImage(file, 1200, 0.8);
+      const fileName = `${user.id}/${Date.now()}.webp`;
+
+      const { error: uploadError } = await client.storage
+        .from('merchant-images')
+        .upload(fileName, compressedBlob, {
+          contentType: 'image/webp',
+        });
+
+      if (uploadError) {
+        alert(`图片上传失败：${uploadError.message}`);
+        return;
+      }
+
+      const { data: urlData } = client.storage
+        .from('merchant-images')
+        .getPublicUrl(fileName);
+
+      coverImageUrl = urlData.publicUrl;
+    } catch (err) {
+      alert(`图片处理失败：${err.message}`);
+      return;
+    }
+  }
+
   const { error } = await client.from('merchants').insert({
     name,
     location,
-    cover_image_url: coverUrl || null,
+    cover_image_url: coverImageUrl || null,
     description: description || null,
     created_by: user.id,
     status: 'pending',
@@ -869,6 +1047,7 @@ els.confirmMerchantUpload.addEventListener('click', async (event) => {
   }
 
   els.merchantUploadDialog.close();
+  state.uploadedImageUrl = null;
   alert('商家提交成功！等待管理员审核后即可显示。');
 });
 
