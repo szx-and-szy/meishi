@@ -22,16 +22,16 @@ const supabaseConfig = window.__SUPABASE_CONFIG__ || {};
 const supabaseUrl = supabaseConfig.url || '';
 const supabaseAnonKey = supabaseConfig.anonKey || '';
 const authEmailDomain = supabaseConfig.emailDomain || 'meishi.local';
-let supabase = null;
+let supabaseClient = null;
 let supabasePromise = null;
 
 async function ensureSupabaseClient() {
-  if (supabase) return supabase;
+  if (supabaseClient) return supabaseClient;
   if (!supabaseUrl || !supabaseAnonKey) return null;
 
   if (window.supabase && typeof window.supabase.createClient === 'function') {
-    supabase = window.supabase.createClient(supabaseUrl, supabaseAnonKey);
-    return supabase;
+    supabaseClient = window.supabase.createClient(supabaseUrl, supabaseAnonKey);
+    return supabaseClient;
   }
 
   if (!supabasePromise) {
@@ -41,8 +41,8 @@ async function ensureSupabaseClient() {
       script.async = true;
       script.onload = () => {
         if (window.supabase && typeof window.supabase.createClient === 'function') {
-          supabase = window.supabase.createClient(supabaseUrl, supabaseAnonKey);
-          resolve(supabase);
+          supabaseClient = window.supabase.createClient(supabaseUrl, supabaseAnonKey);
+          resolve(supabaseClient);
           return;
         }
         resolve(null);
