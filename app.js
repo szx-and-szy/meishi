@@ -62,11 +62,10 @@ function studentIdToEmail(studentId) {
 async function loadCurrentUser() {
   const client = await ensureSupabaseClient();
   if (!client) return;
-  const {
-    data: { session },
-  } = await client.auth.getSession();
 
-  if (!session?.user) {
+  const { data: { user }, error: authError } = await client.auth.getUser();
+
+  if (authError || !user) {
     state.currentUser = null;
     renderProfile();
     renderAdmin();
@@ -76,7 +75,7 @@ async function loadCurrentUser() {
   const { data: profile, error } = await client
     .from('users')
     .select('student_id, nickname, role')
-    .eq('id', session.user.id)
+    .eq('id', user.id)
     .single();
 
   if (error || !profile) {
