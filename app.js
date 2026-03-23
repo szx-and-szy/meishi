@@ -196,7 +196,6 @@ const els = {
   detailView: document.getElementById('detailView'),
   profileView: document.getElementById('profileView'),
   adminView: document.getElementById('adminView'),
-  locationBar: document.getElementById('locationBar'),
   foodTabButton: document.getElementById('foodTabButton'),
   profileTabButton: document.getElementById('profileTabButton'),
   authDialog: document.getElementById('authDialog'),
@@ -283,7 +282,6 @@ function setActiveView(view) {
   els.detailView.classList.toggle('is-hidden', !isDetailView);
   els.profileView.classList.toggle('is-hidden', !isProfileView);
   els.adminView.classList.toggle('is-hidden', !isAdminView);
-  els.locationBar.classList.toggle('is-hidden', !showFoodChrome);
   els.searchInput.classList.toggle('is-hidden', !showFoodChrome);
   els.foodTabButton.classList.toggle('active', isFoodView || isDetailView);
   els.profileTabButton.classList.toggle('active', isProfileView || isAdminView);
@@ -340,6 +338,7 @@ function renderLocationOptions() {
 }
 
 function renderRatingSortOptions() {
+  if (!els.ratingSortSelect) return;
   els.ratingSortSelect.innerHTML = RATING_SORT_OPTIONS.map((option) => `<option value="${option.value}">${option.label}</option>`).join('');
   els.ratingSortSelect.value = state.ratingSort;
 }
@@ -1127,10 +1126,12 @@ els.locationSelect.addEventListener('change', (event) => {
   renderMerchants();
 });
 
-els.ratingSortSelect.addEventListener('change', (event) => {
-  state.ratingSort = event.target.value;
-  renderMerchants();
-});
+if (els.ratingSortSelect) {
+  els.ratingSortSelect.addEventListener('change', (event) => {
+    state.ratingSort = event.target.value;
+    renderMerchants();
+  });
+}
 
 els.searchInput.addEventListener('input', (event) => {
   state.search = event.target.value;
