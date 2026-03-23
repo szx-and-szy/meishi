@@ -9,6 +9,8 @@ const LOCATIONS = [
   '青春集市',
 ];
 
+const STAR_SVG = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>';
+
 const state = {
   currentLocation: LOCATIONS[0],
   search: '',
@@ -336,7 +338,7 @@ function renderMerchants() {
           <div class="merchant-content">
             <div class="section-heading">
               <h3>${merchant.name}</h3>
-              <span class="rating"><span class="rating-star">★</span>${merchant.bayes.toFixed(1)}</span>
+              <span class="rating"><span class="rating-star">${STAR_SVG}</span>${merchant.bayes.toFixed(1)}</span>
             </div>
             <div class="merchant-meta">
               <span>${merchant.location}</span>
@@ -375,7 +377,7 @@ function renderDetail() {
               <button class="report-button" onclick="reportReview('${review.id}')">举报</button>
             </div>
             <div class="review-row">
-              <span class="rating rating-small"><span class="rating-star">★</span>${review.rating}.0</span>
+              <span class="rating rating-small"><span class="rating-star">${STAR_SVG}</span>${review.rating}.0</span>
               <small>${review.createdAt}</small>
             </div>
             <p>${review.content || '<span class="muted">用户未填写文字评价。</span>'}</p>
@@ -418,7 +420,7 @@ function renderDetail() {
         <h3>${merchant.name}</h3>
         <p class="muted">${merchant.location}</p>
       </div>
-      <span class="rating"><span class="rating-star">★</span>${summary.average.toFixed(1)}</span>
+      <span class="rating"><span class="rating-star">${STAR_SVG}</span>${summary.average.toFixed(1)}</span>
     </div>
     <div class="merchant-meta">
       <span>${summary.reviewCount} 条评价</span>
@@ -435,7 +437,6 @@ function renderProfile() {
     els.profilePanel.innerHTML = `
       <div class="profile-actions">
         <button class="primary" onclick="openAuthDialog()">登录</button>
-        <button class="secondary" onclick="openMerchantUpload()">上传商家</button>
       </div>
     `;
     return;
@@ -1164,6 +1165,9 @@ els.confirmRegister.addEventListener('click', async (event) => {
 
 els.confirmMerchantUpload.addEventListener('click', async (event) => {
   event.preventDefault();
+  
+  if (els.confirmMerchantUpload.disabled) return;
+  
   const name = els.uploadMerchantName.value.trim();
   const location = els.uploadMerchantLocation.value;
   const description = els.uploadMerchantDesc.value.trim();
@@ -1177,15 +1181,22 @@ els.confirmMerchantUpload.addEventListener('click', async (event) => {
     return;
   }
 
+  els.confirmMerchantUpload.disabled = true;
+  els.confirmMerchantUpload.textContent = '提交中...';
+
   const client = await ensureSupabaseClient();
   if (!client) {
     alert('Supabase SDK 加载失败，请检查网络或稍后重试。');
+    els.confirmMerchantUpload.disabled = false;
+    els.confirmMerchantUpload.textContent = '提交';
     return;
   }
 
   const { data: { user } } = await client.auth.getUser();
   if (!user) {
     alert('请先登录。');
+    els.confirmMerchantUpload.disabled = false;
+    els.confirmMerchantUpload.textContent = '提交';
     return;
   }
 
@@ -1205,6 +1216,8 @@ els.confirmMerchantUpload.addEventListener('click', async (event) => {
 
       if (uploadError) {
         alert(`图片上传失败：${uploadError.message}`);
+        els.confirmMerchantUpload.disabled = false;
+        els.confirmMerchantUpload.textContent = '提交';
         return;
       }
 
@@ -1215,6 +1228,8 @@ els.confirmMerchantUpload.addEventListener('click', async (event) => {
       coverImageUrl = urlData.publicUrl;
     } catch (err) {
       alert(`图片处理失败：${err.message}`);
+      els.confirmMerchantUpload.disabled = false;
+      els.confirmMerchantUpload.textContent = '提交';
       return;
     }
   }
@@ -1230,9 +1245,13 @@ els.confirmMerchantUpload.addEventListener('click', async (event) => {
 
   if (error) {
     alert(`提交失败：${error.message}`);
+    els.confirmMerchantUpload.disabled = false;
+    els.confirmMerchantUpload.textContent = '提交';
     return;
   }
 
+  els.confirmMerchantUpload.disabled = false;
+  els.confirmMerchantUpload.textContent = '提交';
   els.merchantUploadDialog.close();
   state.uploadedImageUrl = null;
   alert('商家提交成功！等待管理员审核后即可显示。');
