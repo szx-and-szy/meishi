@@ -344,7 +344,7 @@ function invalidatePlatformAverageCache() {
 function bayesianScore(merchantId) {
   const reviews = state.merchantReviews[merchantId] || [];
   const reviewCount = reviews.length;
-  if (reviewCount === 0) return getPlatformAverage();
+  if (reviewCount === 0) return 0;
   const average = reviews.reduce((sum, review) => sum + review.rating, 0) / reviewCount;
   const globalAverage = getPlatformAverage();
   const m = state.bayesThreshold;
@@ -407,7 +407,7 @@ function renderMerchants() {
           <div class="merchant-content">
             <div class="section-heading">
               <h3>${merchant.name}</h3>
-              <span class="rating"><span class="rating-star">${STAR_SVG}</span>${merchant.bayes.toFixed(1)}</span>
+              <span class="rating"><span class="rating-star">${STAR_SVG}</span>${merchant.reviewCount > 0 ? merchant.bayes.toFixed(1) : '暂无评分'}</span>
             </div>
             <div class="merchant-meta">
               <span>${merchant.location}</span>
@@ -449,7 +449,7 @@ function renderDetail() {
               <span class="rating rating-small"><span class="rating-star">${STAR_SVG}</span>${review.rating}.0</span>
               <small>${review.createdAt}</small>
             </div>
-            <p>${review.content || '<span class="muted">用户未填写文字评价。</span>'}</p>
+            <p>${review.content ? review.content.replace(/\n{3,}/g, '\n\n').replace(/\n/g, '<br>') : '<span class="muted">用户未填写文字评价。</span>'}</p>
           </div>
         `;
       },
@@ -473,7 +473,7 @@ function renderDetail() {
         <h3>${merchant.name}</h3>
         <p class="muted">${merchant.location}</p>
       </div>
-      <span class="rating"><span class="rating-star">${STAR_SVG}</span>${summary.average.toFixed(1)}</span>
+      <span class="rating"><span class="rating-star">${STAR_SVG}</span>${summary.reviewCount > 0 ? summary.average.toFixed(1) : '暂无评分'}</span>
     </div>
     <div class="merchant-meta">
       <span>${summary.reviewCount} 条评价</span>
