@@ -1,5 +1,6 @@
 const LOCATIONS = [
   '全部',
+  '青春集市',
   '南苑一楼',
   '南苑二楼',
   '南苑三楼',
@@ -7,7 +8,6 @@ const LOCATIONS = [
   '北苑二楼',
   '北苑三楼',
   '北苑侧楼',
-  '青春集市',
 ];
 
 const STAR_SVG = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>';
@@ -686,8 +686,16 @@ function renderAdminMerchantDetail() {
     </div>
     <div class="section-heading">
       <div>
-        <h3>${merchant.name}</h3>
+        <h3 id="merchantNameDisplay">${merchant.name}</h3>
         <p class="muted">${merchant.location}</p>
+      </div>
+      <button class="secondary" onclick="showEditMerchantName('${merchant.id}', '${merchant.name.replace(/'/g, "\\'")}')">修改名称</button>
+    </div>
+    <div id="editMerchantNameSection" style="display: none; margin-top: 0.5rem;">
+      <input type="text" id="editMerchantNameInput" maxlength="20" placeholder="请输入新的商家名称" style="width: 100%; margin-bottom: 0.5rem;" />
+      <div class="profile-actions" style="margin-top: 0.5rem;">
+        <button class="primary" onclick="saveMerchantName('${merchant.id}')">保存</button>
+        <button class="secondary" onclick="cancelEditMerchantName()">取消</button>
       </div>
     </div>
     ${merchant.description ? `<p>${merchant.description}</p>` : ''}
@@ -725,6 +733,55 @@ async function deleteMerchant(merchantId) {
   alert('商家已删除！');
   await loadMerchants();
   renderAdminMerchantList();
+}
+
+function showEditMerchantName(merchantId, currentName) {
+  const editSection = document.getElementById('editMerchantNameSection');
+  const nameInput = document.getElementById('editMerchantNameInput');
+  if (editSection && nameInput) {
+    editSection.style.display = 'block';
+    nameInput.value = currentName;
+    nameInput.focus();
+  }
+}
+
+function cancelEditMerchantName() {
+  const editSection = document.getElementById('editMerchantNameSection');
+  if (editSection) {
+    editSection.style.display = 'none';
+  }
+}
+
+async function saveMerchantName(merchantId) {
+  const nameInput = document.getElementById('editMerchantNameInput');
+  if (!nameInput) return;
+  
+  const newName = nameInput.value.trim();
+  if (!newName) {
+    alert('请输入商家名称。');
+    return;
+  }
+  if (newName.length > 20) {
+    alert('商家名称不能超过20个字符。');
+    return;
+  }
+
+  const client = await ensureSupabaseClient();
+  if (!client) return;
+
+  const { error } = await client
+    .from('merchants')
+    .update({ name: newName })
+    .eq('id', merchantId);
+
+  if (error) {
+    alert(`修改失败：${error.message}`);
+    return;
+  }
+
+  alert('商家名称已修改！');
+  await loadMerchants();
+  renderAdminMerchantDetail();
 }
 
 window.updateMerchantCover = async (merchantId, inputElement) => {
@@ -1156,7 +1213,8 @@ window.logout = async () => {
 };
 window.openMerchantUpload = async () => {
   if (!requireLogin('上传商家')) return;
-  els.uploadMerchantLocation.innerHTML = LOCATIONS.map(loc => `<option value="${loc}">${loc}</option>`).join('');
+  const uploadLocations = LOCATIONS.filter(loc => loc !== '全部');
+  els.uploadMerchantLocation.innerHTML = uploadLocations.map(loc => `<option value="${loc}">${loc}</option>`).join('');
   els.uploadMerchantName.value = '';
   els.uploadMerchantCover.value = '';
   els.uploadMerchantDesc.value = '';
@@ -1178,6 +1236,9 @@ window.renderAdminMerchantList = renderAdminMerchantList;
 window.filterAdminMerchants = filterAdminMerchants;
 window.selectAdminMerchant = selectAdminMerchant;
 window.deleteMerchant = deleteMerchant;
+window.showEditMerchantName = showEditMerchantName;
+window.cancelEditMerchantName = cancelEditMerchantName;
+window.saveMerchantName = saveMerchantName;
 window.resetPassword = () => {
   alert('此操作应通过 Supabase Edge Function 执行，并在函数内校验管理员身份。');
 };
@@ -1224,6 +1285,14 @@ els.confirmLogin.addEventListener('click', async (event) => {
   const { error } = await client.auth.signInWithPassword({ email, password });
 
   if (error) {
+    if (error.message.includes('Invalid login credentials') || error.message.includes('user not found')) {
+      alert('请先注册');
+      els.authDialog.close();
+      els.passwordInput.value = '';
+      els.registerStudentIdInput.value = studentId;
+      els.registerDialog.showModal();
+      return;
+    }
     alert(`登录失败：${error.message}`);
     return;
   }
