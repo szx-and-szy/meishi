@@ -399,8 +399,9 @@ dialog {
 .dialog-form input,
 .dialog-form select,
 .dialog-form textarea {
-  width: auto;
+  width: 100%;
   box-sizing: border-box;
+  max-width: 100%;
 }
 .link-button {
   background: transparent;
@@ -417,6 +418,14 @@ menu {
   gap: 12px;
   padding: 0;
   margin: 0;
+}
+.dialog-buttons {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+.dialog-buttons button {
+  width: 100%;
 }
 .auth-buttons {
   display: grid;
