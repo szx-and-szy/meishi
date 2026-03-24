@@ -61,6 +61,37 @@
             <div id="adminPanel" class="panel-stack"></div>
           </article>
         </section>
+
+        <section id="uploadMerchantView" class="view-panel panel-stack is-hidden" data-view="uploadMerchant">
+          <article class="card">
+            <div class="section-heading">
+              <h2>上传商家</h2>
+            </div>
+            <form class="dialog-form upload-merchant-form">
+              <label>
+                商家名称
+                <input id="uploadMerchantNamePage" type="text" maxlength="20" placeholder="请输入商家名称" />
+              </label>
+              <label>
+                位置
+                <select id="uploadMerchantLocationPage"></select>
+              </label>
+              <label>
+                封面图片（可选）
+                <input id="uploadMerchantCoverPage" type="file" accept="image/*" />
+              </label>
+              <div id="uploadMerchantPreviewPage" class="image-preview"></div>
+              <label>
+                描述（可选）
+                <textarea id="uploadMerchantDescPage" rows="3" placeholder="简单描述这家商家..."></textarea>
+              </label>
+              <div class="dialog-buttons">
+                <button type="button" class="secondary" onclick="cancelMerchantUploadPage()">取消</button>
+                <button type="button" id="confirmMerchantUploadPage" class="primary">提交</button>
+              </div>
+            </form>
+          </article>
+        </section>
       </main>
 
       <nav class="bottom-nav">
@@ -209,36 +240,6 @@
       </form>
     </dialog>
 
-    <section id="uploadMerchantView" class="view-panel panel-stack is-hidden" data-view="uploadMerchant">
-      <article class="card">
-        <div class="section-heading">
-          <h2>上传商家</h2>
-        </div>
-        <form class="dialog-form upload-merchant-form">
-          <label>
-            商家名称
-            <input id="uploadMerchantNamePage" type="text" maxlength="20" placeholder="请输入商家名称" />
-          </label>
-          <label>
-            位置
-            <select id="uploadMerchantLocationPage"></select>
-          </label>
-          <label>
-            封面图片（可选）
-            <input id="uploadMerchantCoverPage" type="file" accept="image/*" />
-          </label>
-          <div id="uploadMerchantPreviewPage" class="image-preview"></div>
-          <label>
-            描述（可选）
-            <textarea id="uploadMerchantDescPage" rows="3" placeholder="简单描述这家商家..."></textarea>
-          </label>
-          <div class="dialog-buttons">
-            <button type="button" class="secondary" onclick="cancelMerchantUploadPage()">取消</button>
-            <button type="button" id="confirmMerchantUploadPage" class="primary">提交</button>
-          </div>
-        </form>
-      </article>
-    </section>
     <script src="app.js"></script>
   </body>
 </html>
