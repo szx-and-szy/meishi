@@ -36,6 +36,8 @@ const state = {
   uploadedImageUrl: null,
   uploadedImageUrlPage: null,
   adminMerchantDetail: false,
+  cachedAdminData: null,
+  cachedAdminDataTime: 0,
 };
 
 const supabaseConfig = window.__SUPABASE_CONFIG__ || {};
@@ -540,33 +542,49 @@ function renderProfile() {
   `;
 }
 
-async function loadAdminData() {
+async function loadAdminData(forceRefresh = false) {
+  const CACHE_DURATION = 30000;
+  const now = Date.now();
+  
+  if (!forceRefresh && state.cachedAdminData && (now - state.cachedAdminDataTime) < CACHE_DURATION) {
+    return state.cachedAdminData;
+  }
+
   const client = await ensureSupabaseClient();
   if (!client) return { pendingMerchants: [], reportedReviews: [] };
 
-  const { data: pendingMerchants } = await client
-    .from('merchants')
-    .select('id, name, location, created_at, description, cover_image_url, merchant_images(image_url, sort_order)')
-    .eq('status', 'pending')
-    .order('created_at', { ascending: false });
+  const [pendingResult, reportedResult] = await Promise.all([
+    client
+      .from('merchants')
+      .select('id, name, location, created_at, description, cover_image_url, merchant_images(image_url, sort_order)')
+      .eq('status', 'pending')
+      .order('created_at', { ascending: false }),
+    client
+      .from('reviews')
+      .select('id, rating, content, report_count, merchant_id, merchants(name)')
+      .gte('report_count', 20)
+      .order('report_count', { ascending: false })
+  ]);
 
-  const pendingWithImages = (pendingMerchants || []).map(m => ({
+  const pendingWithImages = (pendingResult.data || []).map(m => ({
     ...m,
     images: (m.merchant_images || [])
       .sort((a, b) => a.sort_order - b.sort_order)
       .map(img => img.image_url),
   }));
 
-  const { data: reportedReviews } = await client
-    .from('reviews')
-    .select('id, rating, content, report_count, merchant_id, merchants(name)')
-    .gte('report_count', 20)
-    .order('report_count', { ascending: false });
-
-  return {
+  state.cachedAdminData = {
     pendingMerchants: pendingWithImages,
-    reportedReviews: reportedReviews || [],
+    reportedReviews: reportedResult.data || [],
   };
+  state.cachedAdminDataTime = now;
+
+  return state.cachedAdminData;
+}
+
+function invalidateAdminDataCache() {
+  state.cachedAdminData = null;
+  state.cachedAdminDataTime = 0;
 }
 
 async function renderAdmin() {
@@ -650,7 +668,7 @@ async function renderAdminReportedReviews() {
     <div class="section-heading"><h3>举报审核队列</h3><span class="badge">${reportedReviews.length} 条</span></div>
     <div class="review-list">${reportedHtml}</div>
     <div class="profile-actions">
-      <button class="secondary" onclick="renderAdmin()">返回</button>
+      <button class="outline" onclick="renderAdmin()">返回</button>
     </div>
   `;
 }
@@ -700,7 +718,7 @@ function renderAdminMerchantDetail() {
   if (!merchant) {
     els.adminPanel.innerHTML = `
       <p class="muted">商家不存在。</p>
-      <button class="secondary" onclick="renderAdminMerchantList()">返回</button>
+      <button class="outline" onclick="renderAdminMerchantList()">返回</button>
     `;
     return;
   }
@@ -716,6 +734,8 @@ function renderAdminMerchantDetail() {
         `).join('')}</div>`
     : '<p class="muted">暂无照片</p>';
 
+  const merchantLocations = LOCATIONS.filter(loc => loc !== '全部');
+  
   els.adminPanel.innerHTML = `
     <img class="detail-cover" src="${merchant.cover}" alt="${merchant.name} 封面图" loading="lazy" />
     <div class="section-heading">
@@ -727,15 +747,32 @@ function renderAdminMerchantDetail() {
     <div class="section-heading">
       <div>
         <h3 id="merchantNameDisplay">${merchant.name}</h3>
-        <p class="muted">${merchant.location}</p>
+        <p class="muted" id="merchantLocationDisplay">${merchant.location}</p>
       </div>
-      <button class="secondary" onclick="showEditMerchantName('${merchant.id}', '${merchant.name.replace(/'/g, "\\'")}')">修改名称</button>
+      <label class="photo-upload-btn" style="cursor: pointer;">
+        <span onclick="showEditMerchantName('${merchant.id}', '${merchant.name.replace(/'/g, "\\'")}')">修改名称</span>
+      </label>
     </div>
     <div id="editMerchantNameSection" style="display: none; margin-top: 0.5rem;">
       <input type="text" id="editMerchantNameInput" maxlength="20" placeholder="请输入新的商家名称" style="width: 100%; margin-bottom: 0.5rem;" />
       <div class="profile-actions" style="margin-top: 0.5rem;">
         <button class="primary" onclick="saveMerchantName('${merchant.id}')">保存</button>
-        <button class="secondary" onclick="cancelEditMerchantName()">取消</button>
+        <button class="outline" onclick="cancelEditMerchantName()">取消</button>
+      </div>
+    </div>
+    <div class="section-heading">
+      <h3>位置</h3>
+      <label class="photo-upload-btn" style="cursor: pointer;">
+        <span onclick="showEditMerchantLocation('${merchant.id}', '${merchant.location.replace(/'/g, "\\'")}')">修改位置</span>
+      </label>
+    </div>
+    <div id="editMerchantLocationSection" style="display: none; margin-top: 0.5rem;">
+      <select id="editMerchantLocationSelect" style="width: 100%; margin-bottom: 0.5rem;">
+        ${merchantLocations.map(loc => `<option value="${loc}" ${loc === merchant.location ? 'selected' : ''}>${loc}</option>`).join('')}
+      </select>
+      <div class="profile-actions" style="margin-top: 0.5rem;">
+        <button class="primary" onclick="saveMerchantLocation('${merchant.id}')">保存</button>
+        <button class="outline" onclick="cancelEditMerchantLocation()">取消</button>
       </div>
     </div>
     ${merchant.description ? `<p>${merchant.description}</p>` : ''}
@@ -749,7 +786,7 @@ function renderAdminMerchantDetail() {
     ${imagesHtml}
     <div class="profile-actions">
       <button class="primary" onclick="deleteMerchant('${merchant.id}')">删除商家</button>
-      <button class="secondary" onclick="renderAdminMerchantList()">返回</button>
+      <button class="outline" onclick="renderAdminMerchantList()">返回</button>
     </div>
   `;
 }
@@ -820,6 +857,44 @@ async function saveMerchantName(merchantId) {
   }
 
   alert('商家名称已修改！');
+  await loadMerchants();
+  renderAdminMerchantDetail();
+}
+
+function showEditMerchantLocation(merchantId, currentLocation) {
+  const editSection = document.getElementById('editMerchantLocationSection');
+  if (editSection) {
+    editSection.style.display = 'block';
+  }
+}
+
+function cancelEditMerchantLocation() {
+  const editSection = document.getElementById('editMerchantLocationSection');
+  if (editSection) {
+    editSection.style.display = 'none';
+  }
+}
+
+async function saveMerchantLocation(merchantId) {
+  const locationSelect = document.getElementById('editMerchantLocationSelect');
+  if (!locationSelect) return;
+  
+  const newLocation = locationSelect.value;
+
+  const client = await ensureSupabaseClient();
+  if (!client) return;
+
+  const { error } = await client
+    .from('merchants')
+    .update({ location: newLocation })
+    .eq('id', merchantId);
+
+  if (error) {
+    alert(`修改失败：${error.message}`);
+    return;
+  }
+
+  alert('商家位置已修改！');
   await loadMerchants();
   renderAdminMerchantDetail();
 }
@@ -1049,6 +1124,7 @@ window.approveMerchant = async (merchantId) => {
   }
 
   alert('商家已通过审核！');
+  invalidateAdminDataCache();
   await loadMerchants();
   await renderAdminPendingMerchants();
 };
@@ -1068,6 +1144,7 @@ window.rejectMerchant = async (merchantId) => {
   }
 
   alert('商家已被拒绝。');
+  invalidateAdminDataCache();
   await renderAdminPendingMerchants();
 };
 
@@ -1086,7 +1163,7 @@ window.hideReview = async (reviewId) => {
   }
 
   alert('评价已隐藏。');
-  await renderAdmin();
+  invalidateAdminDataCache();
   await loadMerchants();
   renderDetail();
 };
@@ -1106,7 +1183,8 @@ window.dismissReports = async (reviewId) => {
   }
 
   alert('已忽略举报，举报计数已重置。');
-  await renderAdmin();
+  invalidateAdminDataCache();
+  await renderAdminReportedReviews();
 };
 
 window.uploadMerchantImage = async (merchantId, inputElement) => {
@@ -1289,6 +1367,9 @@ window.deleteMerchant = deleteMerchant;
 window.showEditMerchantName = showEditMerchantName;
 window.cancelEditMerchantName = cancelEditMerchantName;
 window.saveMerchantName = saveMerchantName;
+window.showEditMerchantLocation = showEditMerchantLocation;
+window.cancelEditMerchantLocation = cancelEditMerchantLocation;
+window.saveMerchantLocation = saveMerchantLocation;
 window.resetPassword = () => {
   alert('此操作应通过 Supabase Edge Function 执行，并在函数内校验管理员身份。');
 };
