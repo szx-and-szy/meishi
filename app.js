@@ -1,6 +1,9 @@
 const LOCATIONS = [
   '全部',
   '青春集市',
+  '汤和路（东门向北）',
+  '毓秀餐厅',
+  '大学城',
   '南苑一楼',
   '南苑二楼',
   '南苑三楼',
@@ -541,7 +544,7 @@ async function renderAdmin() {
 
   els.adminPanel.innerHTML = `
     <div class="profile-actions">
-      <button class="primary" onclick="renderAdminPendingMerchants()">待审核商家</button>
+      <button class="secondary" onclick="renderAdminPendingMerchants()">待审核商家</button>
       <button class="secondary" onclick="renderAdminReportedReviews()">举报审核</button>
       <button class="secondary" onclick="renderAdminMerchantList()">商家列表</button>
       <button class="outline" onclick="setActiveView('profile')">返回个人中心</button>
