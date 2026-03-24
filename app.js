@@ -1023,8 +1023,8 @@ window.approveMerchant = async (merchantId) => {
   }
 
   alert('商家已通过审核！');
-  await renderAdmin();
   await loadMerchants();
+  await renderAdminPendingMerchants();
 };
 
 window.rejectMerchant = async (merchantId) => {
@@ -1042,7 +1042,7 @@ window.rejectMerchant = async (merchantId) => {
   }
 
   alert('商家已被拒绝。');
-  await renderAdmin();
+  await renderAdminPendingMerchants();
 };
 
 window.hideReview = async (reviewId) => {
