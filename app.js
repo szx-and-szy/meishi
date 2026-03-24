@@ -183,6 +183,7 @@ async function loadMerchants() {
       }));
   }
 
+  invalidatePlatformAverageCache();
   renderMerchants();
 }
 
@@ -240,7 +241,11 @@ function studentIdValid(studentId) {
 async function compressImage(file, maxWidth = 1200, quality = 0.8) {
   return new Promise((resolve, reject) => {
     const img = new Image();
+    const objectUrl = URL.createObjectURL(file);
+    
     img.onload = () => {
+      URL.revokeObjectURL(objectUrl);
+      
       const canvas = document.createElement('canvas');
       let width = img.width;
       let height = img.height;
@@ -268,8 +273,11 @@ async function compressImage(file, maxWidth = 1200, quality = 0.8) {
         quality
       );
     };
-    img.onerror = () => reject(new Error('图片加载失败'));
-    img.src = URL.createObjectURL(file);
+    img.onerror = () => {
+      URL.revokeObjectURL(objectUrl);
+      reject(new Error('图片加载失败'));
+    };
+    img.src = objectUrl;
   });
 }
 
@@ -290,10 +298,21 @@ function setActiveView(view) {
   els.profileTabButton.classList.toggle('active', isProfileView || isAdminView);
 }
 
+let cachedPlatformAverage = null;
+
 function getPlatformAverage() {
+  if (cachedPlatformAverage !== null) return cachedPlatformAverage;
   const allReviews = Object.values(state.merchantReviews).flat();
-  if (!allReviews.length) return 0;
-  return allReviews.reduce((sum, review) => sum + review.rating, 0) / allReviews.length;
+  if (!allReviews.length) {
+    cachedPlatformAverage = 0;
+    return 0;
+  }
+  cachedPlatformAverage = allReviews.reduce((sum, review) => sum + review.rating, 0) / allReviews.length;
+  return cachedPlatformAverage;
+}
+
+function invalidatePlatformAverageCache() {
+  cachedPlatformAverage = null;
 }
 
 function bayesianScore(merchantId) {
@@ -501,24 +520,16 @@ async function loadAdminData() {
 
   const { data: pendingMerchants } = await client
     .from('merchants')
-    .select('id, name, location, created_at, description, cover_image_url')
+    .select('id, name, location, created_at, description, cover_image_url, merchant_images(image_url, sort_order)')
     .eq('status', 'pending')
     .order('created_at', { ascending: false });
 
-  const pendingWithImages = [];
-  if (pendingMerchants && pendingMerchants.length > 0) {
-    for (const m of pendingMerchants) {
-      const { data: images } = await client
-        .from('merchant_images')
-        .select('image_url')
-        .eq('merchant_id', m.id)
-        .order('sort_order', { ascending: true });
-      pendingWithImages.push({
-        ...m,
-        images: images ? images.map(img => img.image_url) : [],
-      });
-    }
-  }
+  const pendingWithImages = (pendingMerchants || []).map(m => ({
+    ...m,
+    images: (m.merchant_images || [])
+      .sort((a, b) => a.sort_order - b.sort_order)
+      .map(img => img.image_url),
+  }));
 
   const { data: reportedReviews } = await client
     .from('reviews')
@@ -1258,9 +1269,13 @@ if (els.ratingSortSelect) {
   });
 }
 
+let searchDebounceTimer = null;
 els.searchInput.addEventListener('input', (event) => {
   state.search = event.target.value;
-  renderMerchants();
+  if (searchDebounceTimer) clearTimeout(searchDebounceTimer);
+  searchDebounceTimer = setTimeout(() => {
+    renderMerchants();
+  }, 300);
 });
 
 els.foodTabButton.addEventListener('click', () => setActiveView('food'));
@@ -1319,24 +1334,67 @@ async function init() {
 
 init();
 
-els.uploadMerchantCover.addEventListener('change', (event) => {
+els.uploadMerchantCover.addEventListener('change', async (event) => {
   const file = event.target.files[0];
   if (!file) {
     els.uploadMerchantPreview.innerHTML = '';
+    state.uploadedImageUrl = null;
     return;
   }
 
   if (!file.type.startsWith('image/')) {
     alert('请选择图片文件。');
     event.target.value = '';
+    state.uploadedImageUrl = null;
     return;
   }
 
-  const reader = new FileReader();
-  reader.onload = (e) => {
-    els.uploadMerchantPreview.innerHTML = `<img src="${e.target.result}" alt="预览" />`;
-  };
-  reader.readAsDataURL(file);
+  els.uploadMerchantPreview.innerHTML = '<p class="muted">图片处理中...</p>';
+
+  try {
+    const compressedBlob = await compressImage(file, 1200, 0.8);
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      els.uploadMerchantPreview.innerHTML = `<img src="${e.target.result}" alt="预览" />`;
+    };
+    reader.readAsDataURL(compressedBlob);
+    
+    const client = await ensureSupabaseClient();
+    if (!client) {
+      alert('Supabase SDK 加载失败。');
+      state.uploadedImageUrl = null;
+      return;
+    }
+
+    const { data: { user } } = await client.auth.getUser();
+    if (!user) {
+      alert('请先登录。');
+      state.uploadedImageUrl = null;
+      return;
+    }
+
+    const fileName = `${user.id}/upload_${Date.now()}.webp`;
+    const { error: uploadError } = await client.storage
+      .from('merchant-images')
+      .upload(fileName, compressedBlob, {
+        contentType: 'image/webp',
+      });
+
+    if (uploadError) {
+      alert(`图片上传失败：${uploadError.message}`);
+      state.uploadedImageUrl = null;
+      return;
+    }
+
+    const { data: urlData } = client.storage
+      .from('merchant-images')
+      .getPublicUrl(fileName);
+
+    state.uploadedImageUrl = urlData.publicUrl;
+  } catch (err) {
+    alert(`图片处理失败：${err.message}`);
+    state.uploadedImageUrl = null;
+  }
 });
 
 document.addEventListener('change', async (event) => {
@@ -1525,44 +1583,10 @@ els.confirmMerchantUpload.addEventListener('click', async (event) => {
     return;
   }
 
-  let coverImageUrl = state.uploadedImageUrl;
-
-  const file = els.uploadMerchantCover.files[0];
-  if (file && !coverImageUrl) {
-    try {
-      const compressedBlob = await compressImage(file, 1200, 0.8);
-      const fileName = `${user.id}/${Date.now()}.webp`;
-
-      const { error: uploadError } = await client.storage
-        .from('merchant-images')
-        .upload(fileName, compressedBlob, {
-          contentType: 'image/webp',
-        });
-
-      if (uploadError) {
-        alert(`图片上传失败：${uploadError.message}`);
-        els.confirmMerchantUpload.disabled = false;
-        els.confirmMerchantUpload.textContent = '提交';
-        return;
-      }
-
-      const { data: urlData } = client.storage
-        .from('merchant-images')
-        .getPublicUrl(fileName);
-
-      coverImageUrl = urlData.publicUrl;
-    } catch (err) {
-      alert(`图片处理失败：${err.message}`);
-      els.confirmMerchantUpload.disabled = false;
-      els.confirmMerchantUpload.textContent = '提交';
-      return;
-    }
-  }
-
   const { error } = await client.from('merchants').insert({
     name,
     location,
-    cover_image_url: coverImageUrl || null,
+    cover_image_url: state.uploadedImageUrl || null,
     description: description || null,
     created_by: user.id,
     status: 'pending',
@@ -1578,6 +1602,8 @@ els.confirmMerchantUpload.addEventListener('click', async (event) => {
   els.confirmMerchantUpload.disabled = false;
   els.confirmMerchantUpload.textContent = '提交';
   els.merchantUploadDialog.close();
+  els.uploadMerchantCover.value = '';
+  els.uploadMerchantPreview.innerHTML = '';
   state.uploadedImageUrl = null;
   alert('商家提交成功！等待管理员审核后即可显示。');
 });
