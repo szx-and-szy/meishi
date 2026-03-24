@@ -2,12 +2,12 @@ const LOCATIONS = [
   '全部',
   '青春集市',
   '汤和路（东门向北）',
-  '毓秀餐厅',
   '大学城',
   '南苑一楼',
   '南苑二楼',
   '南苑三楼',
   '北苑一楼',
+  '毓秀餐厅',
   '北苑二楼',
   '北苑三楼',
   '北苑侧楼',
@@ -34,6 +34,8 @@ const state = {
   merchantReviews: {},
   editingReviewId: null,
   uploadedImageUrl: null,
+  uploadedImageUrlPage: null,
+  adminMerchantDetail: false,
 };
 
 const supabaseConfig = window.__SUPABASE_CONFIG__ || {};
@@ -200,8 +202,10 @@ const els = {
   detailView: document.getElementById('detailView'),
   profileView: document.getElementById('profileView'),
   adminView: document.getElementById('adminView'),
+  uploadMerchantView: document.getElementById('uploadMerchantView'),
   foodTabButton: document.getElementById('foodTabButton'),
   profileTabButton: document.getElementById('profileTabButton'),
+  navSlider: document.getElementById('navSlider'),
   authDialog: document.getElementById('authDialog'),
   registerDialog: document.getElementById('registerDialog'),
   forgotPasswordDialog: document.getElementById('forgotPasswordDialog'),
@@ -221,6 +225,14 @@ const els = {
   uploadMerchantDesc: document.getElementById('uploadMerchantDesc'),
   uploadMerchantPreview: document.getElementById('uploadMerchantPreview'),
   confirmMerchantUpload: document.getElementById('confirmMerchantUpload'),
+  uploadMerchantNamePage: document.getElementById('uploadMerchantNamePage'),
+  uploadMerchantLocationPage: document.getElementById('uploadMerchantLocationPage'),
+  uploadMerchantCoverPage: document.getElementById('uploadMerchantCoverPage'),
+  uploadMerchantDescPage: document.getElementById('uploadMerchantDescPage'),
+  uploadMerchantPreviewPage: document.getElementById('uploadMerchantPreviewPage'),
+  confirmMerchantUploadPage: document.getElementById('confirmMerchantUploadPage'),
+  imageViewerDialog: document.getElementById('imageViewerDialog'),
+  imageViewerImage: document.getElementById('imageViewerImage'),
   reviewDialog: document.getElementById('reviewDialog'),
   reviewRating: document.getElementById('reviewRating'),
   reviewContent: document.getElementById('reviewContent'),
@@ -287,15 +299,29 @@ function setActiveView(view) {
   const isDetailView = view === 'detail';
   const isProfileView = view === 'profile';
   const isAdminView = view === 'admin';
+  const isUploadMerchantView = view === 'uploadMerchant';
   const showFoodChrome = isFoodView;
+  const showProfileTab = isProfileView || isAdminView;
+  
   els.topbar.classList.toggle('is-hidden', !showFoodChrome);
   els.foodView.classList.toggle('is-hidden', !isFoodView);
   els.detailView.classList.toggle('is-hidden', !isDetailView);
   els.profileView.classList.toggle('is-hidden', !isProfileView);
   els.adminView.classList.toggle('is-hidden', !isAdminView);
+  els.uploadMerchantView.classList.toggle('is-hidden', !isUploadMerchantView);
   els.searchInput.classList.toggle('is-hidden', !showFoodChrome);
-  els.foodTabButton.classList.toggle('active', isFoodView || isDetailView);
-  els.profileTabButton.classList.toggle('active', isProfileView || isAdminView);
+  els.foodTabButton.classList.toggle('active', isFoodView || isDetailView || isUploadMerchantView);
+  els.profileTabButton.classList.toggle('active', showProfileTab);
+  
+  if (els.navSlider) {
+    els.navSlider.classList.toggle('right', showProfileTab);
+  }
+}
+
+function showImageViewer(imageSrc) {
+  if (!els.imageViewerDialog || !els.imageViewerImage) return;
+  els.imageViewerImage.src = imageSrc;
+  els.imageViewerDialog.showModal();
 }
 
 let cachedPlatformAverage = null;
@@ -377,7 +403,7 @@ function renderMerchants() {
     .map(
       (merchant) => `
         <article class="merchant-card">
-          <img src="${merchant.cover}" alt="${merchant.name} 封面图" />
+          <img src="${merchant.cover}" alt="${merchant.name} 封面图" loading="lazy" />
           <div class="merchant-content">
             <div class="section-heading">
               <h3>${merchant.name}</h3>
@@ -414,7 +440,7 @@ function renderDetail() {
           <div class="review-card">
             <div class="review-row review-card-top">
               <div class="review-user">
-                <img src="${avatarSrc}" alt="${review.user}" class="review-avatar" />
+                <img src="${avatarSrc}" alt="${review.user}" class="review-avatar" loading="lazy" />
                 <strong>${review.user}</strong>
               </div>
               <button class="report-button" onclick="reportReview('${review.id}')">举报</button>
@@ -435,13 +461,13 @@ function renderDetail() {
   let photoStripHtml = '';
   if (images.length > 0) {
     photoStripHtml = `<div class="photo-strip">${images
-      .map((image, index) => `<img src="${image}" alt="${merchant.name} 图片 ${index + 1}" />`)
+      .map((image, index) => `<img src="${image}" alt="${merchant.name} 图片 ${index + 1}" loading="lazy" onclick="showImageViewer('${image}')" />`)
       .join('')}</div>`;
   }
 
   els.merchantDetail.className = 'merchant-detail panel-stack';
   els.merchantDetail.innerHTML = `
-    <img class="detail-cover" src="${merchant.cover}" alt="${merchant.name} 封面图" />
+    <img class="detail-cover" src="${merchant.cover}" alt="${merchant.name} 封面图" onclick="showImageViewer('${merchant.cover}')" />
     <div class="section-heading">
       <div>
         <h3>${merchant.name}</h3>
@@ -493,7 +519,7 @@ function renderProfile() {
   els.profilePanel.innerHTML = `
     <div class="profile-header">
       <div class="avatar-wrapper">
-        <img src="${avatarUrl}" alt="头像" class="avatar" id="profileAvatar" />
+        <img src="${avatarUrl}" alt="头像" class="avatar" id="profileAvatar" loading="lazy" />
         <label class="avatar-upload">
           <input type="file" accept="image/*" id="avatarInput" />
           <span>更换</span>
@@ -569,10 +595,10 @@ async function renderAdminPendingMerchants() {
   const pendingHtml = pendingMerchants.length > 0
     ? pendingMerchants.map(m => {
         const imagesHtml = m.images && m.images.length > 0
-          ? `<div class="photo-strip">${m.images.map((img, i) => `<img src="${img}" alt="${m.name} 图片 ${i + 1}" />`).join('')}</div>`
+          ? `<div class="photo-strip">${m.images.map((img, i) => `<img src="${img}" alt="${m.name} 图片 ${i + 1}" loading="lazy" />`).join('')}</div>`
           : '';
         const coverHtml = m.cover_image_url
-          ? `<img src="${m.cover_image_url}" alt="${m.name} 封面" class="detail-cover" style="max-height: 150px;" />`
+          ? `<img src="${m.cover_image_url}" alt="${m.name} 封面" class="detail-cover" style="max-height: 150px;" loading="lazy" />`
           : '';
         return `
           <div class="review-card">
@@ -596,7 +622,7 @@ async function renderAdminPendingMerchants() {
     <div class="section-heading"><h3>待审商家</h3><span class="badge">${pendingMerchants.length} 家</span></div>
     <div class="review-list">${pendingHtml}</div>
     <div class="profile-actions">
-      <button class="secondary" onclick="renderAdmin()">返回</button>
+      <button class="outline" onclick="renderAdmin()">返回</button>
     </div>
   `;
 }
@@ -638,7 +664,7 @@ function renderAdminMerchantList(searchTerm = '') {
   const listHtml = merchants.length > 0
     ? merchants.map(m => `
         <div class="merchant-card" onclick="selectAdminMerchant('${m.id}')" style="cursor: pointer;">
-          <img src="${m.cover}" alt="${m.name}" style="height: 140px;" />
+          <img src="${m.cover}" alt="${m.name}" style="height: 140px;" loading="lazy" />
           <div class="merchant-content">
             <strong>${m.name}</strong>
             <p class="muted">${m.location}</p>
@@ -684,14 +710,14 @@ function renderAdminMerchantDetail() {
     ? `<div class="photo-strip photo-strip-admin">${images
         .map((img, i) => `
           <div class="photo-item">
-            <img src="${img}" alt="${merchant.name} 图片 ${i + 1}" />
+            <img src="${img}" alt="${merchant.name} 图片 ${i + 1}" loading="lazy" />
             <button class="photo-delete-btn" onclick="deleteMerchantImage('${merchant.id}', '${img}')">×</button>
           </div>
         `).join('')}</div>`
     : '<p class="muted">暂无照片</p>';
 
   els.adminPanel.innerHTML = `
-    <img class="detail-cover" src="${merchant.cover}" alt="${merchant.name} 封面图" />
+    <img class="detail-cover" src="${merchant.cover}" alt="${merchant.name} 封面图" loading="lazy" />
     <div class="section-heading">
       <label class="photo-upload-btn">
         <input type="file" accept="image/*" onchange="updateMerchantCover('${merchant.id}', this)" />
@@ -1228,13 +1254,20 @@ window.logout = async () => {
 window.openMerchantUpload = async () => {
   if (!requireLogin('上传商家')) return;
   const uploadLocations = LOCATIONS.filter(loc => loc !== '全部');
-  els.uploadMerchantLocation.innerHTML = uploadLocations.map(loc => `<option value="${loc}">${loc}</option>`).join('');
-  els.uploadMerchantName.value = '';
-  els.uploadMerchantCover.value = '';
-  els.uploadMerchantDesc.value = '';
-  els.uploadMerchantPreview.innerHTML = '';
-  state.uploadedImageUrl = null;
-  els.merchantUploadDialog.showModal();
+  els.uploadMerchantLocationPage.innerHTML = uploadLocations.map(loc => `<option value="${loc}">${loc}</option>`).join('');
+  els.uploadMerchantNamePage.value = '';
+  els.uploadMerchantCoverPage.value = '';
+  els.uploadMerchantDescPage.value = '';
+  els.uploadMerchantPreviewPage.innerHTML = '';
+  state.uploadedImageUrlPage = null;
+  setActiveView('uploadMerchant');
+};
+
+window.cancelMerchantUploadPage = () => {
+  els.uploadMerchantCoverPage.value = '';
+  els.uploadMerchantPreviewPage.innerHTML = '';
+  state.uploadedImageUrlPage = null;
+  setActiveView('food');
 };
 window.openAdminWorkbench = () => {
   const isAdmin = ['admin', 'super_admin'].includes(state.currentUser?.role);
@@ -1242,7 +1275,10 @@ window.openAdminWorkbench = () => {
     alert('仅管理员可进入管理员工作台。');
     return;
   }
+  state.adminMerchantDetail = false;
+  state.selectedMerchantId = null;
   setActiveView('admin');
+  renderAdmin();
 };
 window.renderAdminPendingMerchants = renderAdminPendingMerchants;
 window.renderAdminReportedReviews = renderAdminReportedReviews;
@@ -1397,6 +1433,69 @@ els.uploadMerchantCover.addEventListener('change', async (event) => {
   }
 });
 
+els.uploadMerchantCoverPage.addEventListener('change', async (event) => {
+  const file = event.target.files[0];
+  if (!file) {
+    els.uploadMerchantPreviewPage.innerHTML = '';
+    state.uploadedImageUrlPage = null;
+    return;
+  }
+
+  if (!file.type.startsWith('image/')) {
+    alert('请选择图片文件。');
+    event.target.value = '';
+    state.uploadedImageUrlPage = null;
+    return;
+  }
+
+  els.uploadMerchantPreviewPage.innerHTML = '<p class="muted">图片处理中...</p>';
+
+  try {
+    const compressedBlob = await compressImage(file, 1200, 0.8);
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      els.uploadMerchantPreviewPage.innerHTML = `<img src="${e.target.result}" alt="预览" />`;
+    };
+    reader.readAsDataURL(compressedBlob);
+    
+    const client = await ensureSupabaseClient();
+    if (!client) {
+      alert('Supabase SDK 加载失败。');
+      state.uploadedImageUrlPage = null;
+      return;
+    }
+
+    const { data: { user } } = await client.auth.getUser();
+    if (!user) {
+      alert('请先登录。');
+      state.uploadedImageUrlPage = null;
+      return;
+    }
+
+    const fileName = `${user.id}/upload_${Date.now()}.webp`;
+    const { error: uploadError } = await client.storage
+      .from('merchant-images')
+      .upload(fileName, compressedBlob, {
+        contentType: 'image/webp',
+      });
+
+    if (uploadError) {
+      alert(`图片上传失败：${uploadError.message}`);
+      state.uploadedImageUrlPage = null;
+      return;
+    }
+
+    const { data: urlData } = client.storage
+      .from('merchant-images')
+      .getPublicUrl(fileName);
+
+    state.uploadedImageUrlPage = urlData.publicUrl;
+  } catch (err) {
+    alert(`图片处理失败：${err.message}`);
+    state.uploadedImageUrlPage = null;
+  }
+});
+
 document.addEventListener('change', async (event) => {
   if (event.target.id !== 'avatarInput') return;
 
@@ -1441,11 +1540,11 @@ document.addEventListener('change', async (event) => {
       .from('avatars')
       .getPublicUrl(fileName);
 
-    const avatarUrl = urlData.publicUrl;
+    const avatarUrl = urlData.publicUrl + '?t=' + Date.now();
 
     const { error: updateError } = await client
       .from('users')
-      .update({ avatar_url: avatarUrl })
+      .update({ avatar_url: avatarUrl.split('?')[0] })
       .eq('id', user.id);
 
     if (updateError) {
@@ -1606,6 +1705,68 @@ els.confirmMerchantUpload.addEventListener('click', async (event) => {
   els.uploadMerchantPreview.innerHTML = '';
   state.uploadedImageUrl = null;
   alert('商家提交成功！等待管理员审核后即可显示。');
+});
+
+els.confirmMerchantUploadPage.addEventListener('click', async (event) => {
+  event.preventDefault();
+  
+  if (els.confirmMerchantUploadPage.disabled) return;
+  
+  const name = els.uploadMerchantNamePage.value.trim();
+  const location = els.uploadMerchantLocationPage.value;
+  const description = els.uploadMerchantDescPage.value.trim();
+
+  if (!name) {
+    alert('请输入商家名称。');
+    return;
+  }
+  if (name.length > 20) {
+    alert('商家名称不能超过20个字符。');
+    return;
+  }
+
+  els.confirmMerchantUploadPage.disabled = true;
+  els.confirmMerchantUploadPage.textContent = '提交中...';
+
+  const client = await ensureSupabaseClient();
+  if (!client) {
+    alert('Supabase SDK 加载失败，请检查网络或稍后重试。');
+    els.confirmMerchantUploadPage.disabled = false;
+    els.confirmMerchantUploadPage.textContent = '提交';
+    return;
+  }
+
+  const { data: { user } } = await client.auth.getUser();
+  if (!user) {
+    alert('请先登录。');
+    els.confirmMerchantUploadPage.disabled = false;
+    els.confirmMerchantUploadPage.textContent = '提交';
+    return;
+  }
+
+  const { error } = await client.from('merchants').insert({
+    name,
+    location,
+    cover_image_url: state.uploadedImageUrlPage || null,
+    description: description || null,
+    created_by: user.id,
+    status: 'pending',
+  });
+
+  if (error) {
+    alert(`提交失败：${error.message}`);
+    els.confirmMerchantUploadPage.disabled = false;
+    els.confirmMerchantUploadPage.textContent = '提交';
+    return;
+  }
+
+  els.confirmMerchantUploadPage.disabled = false;
+  els.confirmMerchantUploadPage.textContent = '提交';
+  els.uploadMerchantCoverPage.value = '';
+  els.uploadMerchantPreviewPage.innerHTML = '';
+  state.uploadedImageUrlPage = null;
+  alert('商家提交成功！等待管理员审核后即可显示。');
+  setActiveView('food');
 });
 
 els.confirmReview.addEventListener('click', async (event) => {
