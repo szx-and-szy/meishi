@@ -17,6 +17,61 @@
   background: var(--bg);
   color: var(--text);
 }
+.splash-screen {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(135deg, #fff7ed 0%, #fffbf5 50%, #fed7aa 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  opacity: 1;
+  transition: opacity 0.5s ease-out;
+}
+.splash-screen.fade-out {
+  opacity: 0;
+  pointer-events: none;
+}
+.splash-logo {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+}
+.splash-icon {
+  width: 100px;
+  height: 100px;
+  animation: splashFlyIn 0.8s cubic-bezier(0.3, 1, 0.8, 1) forwards;
+  opacity: 0;
+  transform: translateY(-100vh);
+}
+.splash-svg {
+  width: 100%;
+  height: 100%;
+  filter: drop-shadow(0 4px 8px rgba(249, 115, 22, 0.3));
+}
+.splash-text {
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--primary);
+  letter-spacing: 0.05em;
+  animation: splashTextFade 0.6s ease-out 0.4s forwards;
+  opacity: 0;
+}
+@keyframes splashFlyIn {
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@keyframes splashTextFade {
+  to {
+    opacity: 1;
+  }
+}
 body {
   margin: 0;
   background: var(--bg);
