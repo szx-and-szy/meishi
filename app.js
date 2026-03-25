@@ -326,6 +326,19 @@ function showImageViewer(imageSrc) {
   els.imageViewerDialog.showModal();
 }
 
+function closeImageViewer() {
+  if (!els.imageViewerDialog) return;
+  els.imageViewerDialog.close();
+  
+  const viewport = document.querySelector('meta[name="viewport"]');
+  if (viewport) {
+    viewport.setAttribute('content', 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no');
+    setTimeout(() => {
+      viewport.setAttribute('content', 'width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes');
+    }, 10);
+  }
+}
+
 let cachedPlatformAverage = null;
 
 function getPlatformAverage() {
@@ -984,6 +997,9 @@ window.selectMerchant = (merchantId) => {
   renderDetail();
   setActiveView('detail');
 };
+
+window.showImageViewer = showImageViewer;
+window.closeImageViewer = closeImageViewer;
 
 window.reportReview = async (reviewId) => {
   if (!requireLogin('举报评价')) return;
