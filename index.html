@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes" />
-    <title>校园餐饮</title>
+    <title>安财美食地图</title>
     <link rel="stylesheet" href="styles.css" />
     <script>
       window.__SUPABASE_CONFIG__ = window.__SUPABASE_CONFIG__ || {
@@ -14,6 +14,24 @@
     </script>
   </head>
   <body>
+    <div id="splashScreen" class="splash-screen">
+      <div class="splash-logo">
+        <div class="splash-icon">
+          <svg viewBox="0 0 100 100" class="splash-svg">
+            <defs>
+              <linearGradient id="markerGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" style="stop-color:#f97316" />
+                <stop offset="100%" style="stop-color:#ea580c" />
+              </linearGradient>
+            </defs>
+            <path d="M50 8 C30 8 15 23 15 43 C15 68 50 92 50 92 C50 92 85 68 85 43 C85 23 70 8 50 8 Z" fill="url(#markerGradient)" class="marker-body" />
+            <circle cx="50" cy="38" r="18" fill="white" opacity="0.95" />
+            <text x="50" y="45" text-anchor="middle" font-size="22">🍜</text>
+          </svg>
+        </div>
+        <div class="splash-text">安财美食地图</div>
+      </div>
+    </div>
     <div class="app-shell">
       <header id="topbar" class="topbar card">
         <input id="searchInput" type="search" placeholder="搜索商家名称" maxlength="20" />
@@ -70,14 +88,14 @@
             <form class="dialog-form upload-merchant-form">
               <label>
                 商家名称
-                <input id="uploadMerchantNamePage" type="text" maxlength="20" placeholder="请输入商家名称" />
+                <input id="uploadMerchantNamePage" type="text" maxlength="20" placeholder="请尽量输入有标识性的全名" />
               </label>
               <label>
                 位置
                 <select id="uploadMerchantLocationPage"></select>
               </label>
               <label>
-                封面图片（可选）
+                商家照片（可选）
                 <input id="uploadMerchantCoverPage" type="file" accept="image/*" />
               </label>
               <div id="uploadMerchantPreviewPage" class="image-preview"></div>
@@ -159,14 +177,14 @@
         <h3>上传商家</h3>
         <label>
           商家名称
-          <input id="uploadMerchantName" type="text" maxlength="20" placeholder="请输入商家名称" />
+          <input id="uploadMerchantName" type="text" maxlength="20" placeholder="请尽量输入有标识性的全名" />
         </label>
         <label>
           位置
           <select id="uploadMerchantLocation"></select>
         </label>
         <label>
-          封面图片（可选）
+          商家照片（可选）
           <input id="uploadMerchantCover" type="file" accept="image/*" />
         </label>
         <div id="uploadMerchantPreview" class="image-preview"></div>
