@@ -502,7 +502,7 @@ menu {
 .rating-star-empty {
   color: #d1d5db;
 }
-.image-viewer-form {
+.image-viewer-backdrop {
   position: relative;
   width: 100%;
   height: 100%;
@@ -513,29 +513,16 @@ menu {
   background: rgba(0, 0, 0, 0.95);
   padding: 0;
   margin: 0;
-  gap: 16px;
+  cursor: pointer;
+  touch-action: pan-x pan-y;
 }
-.image-viewer-form img {
+.image-viewer-backdrop img {
   max-width: 95vw;
-  max-height: 85vh;
+  max-height: 90vh;
   object-fit: contain;
   border-radius: 8px;
-}
-.image-viewer-close {
-  width: 48px;
-  height: 48px;
-  border: 2px solid rgba(255, 255, 255, 0.5);
-  background: transparent;
-  color: white;
-  font-size: 28px;
-  line-height: 1;
-  border-radius: 50%;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-.image-viewer-close:hover {
-  background: rgba(255, 255, 255, 0.2);
-  border-color: rgba(255, 255, 255, 0.8);
+  cursor: default;
+  touch-action: none;
 }
 .detail-cover {
   cursor: pointer;
