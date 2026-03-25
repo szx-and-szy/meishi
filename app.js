@@ -1106,7 +1106,7 @@ function updateStarDisplay(rating) {
   });
 }
 
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
   const ratingSelector = document.getElementById('ratingSelector');
   if (ratingSelector) {
     ratingSelector.addEventListener('click', (e) => {
@@ -1117,6 +1117,21 @@ document.addEventListener('DOMContentLoaded', () => {
         updateStarDisplay(value);
       }
     });
+  }
+
+  const splashScreen = document.getElementById('splashScreen');
+  const minSplashTime = new Promise(resolve => setTimeout(resolve, 1200));
+  
+  await Promise.all([
+    loadMerchants(),
+    minSplashTime
+  ]);
+
+  if (splashScreen) {
+    splashScreen.classList.add('fade-out');
+    setTimeout(() => {
+      splashScreen.remove();
+    }, 500);
   }
 });
 
