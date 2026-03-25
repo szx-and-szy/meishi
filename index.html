@@ -2,7 +2,7 @@
 <html lang="zh-CN">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes" />
     <title>校园餐饮</title>
     <link rel="stylesheet" href="styles.css" />
     <script>
@@ -234,10 +234,9 @@
     </dialog>
 
     <dialog id="imageViewerDialog">
-      <form method="dialog" class="image-viewer-form">
-        <button value="cancel" class="image-viewer-close" aria-label="关闭">×</button>
-        <img id="imageViewerImage" src="" alt="大图预览" />
-      </form>
+      <div class="image-viewer-backdrop" onclick="closeImageViewer()">
+        <img id="imageViewerImage" src="" alt="大图预览" onclick="event.stopPropagation()" />
+      </div>
     </dialog>
 
     <script src="app.js"></script>
