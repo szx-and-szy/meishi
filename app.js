@@ -33,7 +33,6 @@ const state = {
   merchantImages: {},
   merchantReviews: {},
   editingReviewId: null,
-  uploadedImageUrl: null,
   uploadedImageUrlPage: null,
   adminMerchantDetail: false,
   cachedAdminData: null,
@@ -220,13 +219,6 @@ const els = {
   registerPasswordInput: document.getElementById('registerPasswordInput'),
   confirmLogin: document.getElementById('confirmLogin'),
   confirmRegister: document.getElementById('confirmRegister'),
-  merchantUploadDialog: document.getElementById('merchantUploadDialog'),
-  uploadMerchantName: document.getElementById('uploadMerchantName'),
-  uploadMerchantLocation: document.getElementById('uploadMerchantLocation'),
-  uploadMerchantCover: document.getElementById('uploadMerchantCover'),
-  uploadMerchantDesc: document.getElementById('uploadMerchantDesc'),
-  uploadMerchantPreview: document.getElementById('uploadMerchantPreview'),
-  confirmMerchantUpload: document.getElementById('confirmMerchantUpload'),
   uploadMerchantNamePage: document.getElementById('uploadMerchantNamePage'),
   uploadMerchantLocationPage: document.getElementById('uploadMerchantLocationPage'),
   uploadMerchantCoverPage: document.getElementById('uploadMerchantCoverPage'),
@@ -360,6 +352,10 @@ function bayesianScore(merchantId) {
   const reviews = state.merchantReviews[merchantId] || [];
   const reviewCount = reviews.length;
   if (reviewCount === 0) return 0;
+  
+  const allFiveStars = reviews.every(review => review.rating === 5);
+  if (allFiveStars) return 5;
+  
   const average = reviews.reduce((sum, review) => sum + review.rating, 0) / reviewCount;
   const globalAverage = getPlatformAverage();
   const m = state.bayesThreshold;
@@ -372,11 +368,13 @@ function merchantSummary(merchant) {
   const average = reviewCount > 0 
     ? reviews.reduce((sum, review) => sum + review.rating, 0) / reviewCount 
     : 0;
+  const bayes = bayesianScore(merchant.id);
   return {
     ...merchant,
     reviewCount,
     average,
-    bayes: bayesianScore(merchant.id),
+    bayes,
+    displayScore: bayes,
   };
 }
 
@@ -422,7 +420,7 @@ function renderMerchants() {
           <div class="merchant-content">
             <div class="section-heading">
               <h3>${merchant.name}</h3>
-              <span class="rating"><span class="rating-star">${STAR_SVG}</span>${merchant.reviewCount > 0 ? merchant.bayes.toFixed(1) : '暂无评分'}</span>
+              <span class="rating"><span class="rating-star">${STAR_SVG}</span>${merchant.reviewCount > 0 ? merchant.displayScore.toFixed(1) : '暂无评分'}</span>
             </div>
             <div class="merchant-meta">
               <span>${merchant.location}</span>
@@ -488,7 +486,7 @@ function renderDetail() {
         <h3>${merchant.name}</h3>
         <p class="muted">${merchant.location}</p>
       </div>
-      <span class="rating"><span class="rating-star">${STAR_SVG}</span>${summary.reviewCount > 0 ? summary.average.toFixed(1) : '暂无评分'}</span>
+      <span class="rating"><span class="rating-star">${STAR_SVG}</span>${summary.reviewCount > 0 ? summary.displayScore.toFixed(1) : '暂无评分'}</span>
     </div>
     <div class="merchant-meta">
       <span>${summary.reviewCount} 条评价</span>
@@ -1144,6 +1142,17 @@ window.approveMerchant = async (merchantId) => {
   const client = await ensureSupabaseClient();
   if (!client) return;
 
+  const { data: merchant, error: fetchError } = await client
+    .from('merchants')
+    .select('description, created_by')
+    .eq('id', merchantId)
+    .single();
+
+  if (fetchError) {
+    alert(`获取商家信息失败：${fetchError.message}`);
+    return;
+  }
+
   const { error } = await client
     .from('merchants')
     .update({ status: 'approved' })
@@ -1154,8 +1163,18 @@ window.approveMerchant = async (merchantId) => {
     return;
   }
 
+  if (merchant.description && merchant.description.trim() && merchant.created_by) {
+    await client.from('reviews').insert({
+      merchant_id: merchantId,
+      user_id: merchant.created_by,
+      rating: 5,
+      content: merchant.description.trim(),
+    });
+  }
+
   alert('商家已通过审核！');
   invalidateAdminDataCache();
+  invalidatePlatformAverageCache();
   await loadMerchants();
   await renderAdminPendingMerchants();
 };
@@ -1482,69 +1501,6 @@ async function init() {
 
 init();
 
-els.uploadMerchantCover.addEventListener('change', async (event) => {
-  const file = event.target.files[0];
-  if (!file) {
-    els.uploadMerchantPreview.innerHTML = '';
-    state.uploadedImageUrl = null;
-    return;
-  }
-
-  if (!file.type.startsWith('image/')) {
-    alert('请选择图片文件。');
-    event.target.value = '';
-    state.uploadedImageUrl = null;
-    return;
-  }
-
-  els.uploadMerchantPreview.innerHTML = '<p class="muted">图片处理中...</p>';
-
-  try {
-    const compressedBlob = await compressImage(file, 1200, 0.8);
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      els.uploadMerchantPreview.innerHTML = `<img src="${e.target.result}" alt="预览" />`;
-    };
-    reader.readAsDataURL(compressedBlob);
-    
-    const client = await ensureSupabaseClient();
-    if (!client) {
-      alert('Supabase SDK 加载失败。');
-      state.uploadedImageUrl = null;
-      return;
-    }
-
-    const { data: { user } } = await client.auth.getUser();
-    if (!user) {
-      alert('请先登录。');
-      state.uploadedImageUrl = null;
-      return;
-    }
-
-    const fileName = `${user.id}/upload_${Date.now()}.webp`;
-    const { error: uploadError } = await client.storage
-      .from('merchant-images')
-      .upload(fileName, compressedBlob, {
-        contentType: 'image/webp',
-      });
-
-    if (uploadError) {
-      alert(`图片上传失败：${uploadError.message}`);
-      state.uploadedImageUrl = null;
-      return;
-    }
-
-    const { data: urlData } = client.storage
-      .from('merchant-images')
-      .getPublicUrl(fileName);
-
-    state.uploadedImageUrl = urlData.publicUrl;
-  } catch (err) {
-    alert(`图片处理失败：${err.message}`);
-    state.uploadedImageUrl = null;
-  }
-});
-
 els.uploadMerchantCoverPage.addEventListener('change', async (event) => {
   const file = event.target.files[0];
   if (!file) {
@@ -1757,68 +1713,6 @@ els.confirmRegister.addEventListener('click', async (event) => {
   setActiveView('profile');
 });
 
-els.confirmMerchantUpload.addEventListener('click', async (event) => {
-  event.preventDefault();
-  
-  if (els.confirmMerchantUpload.disabled) return;
-  
-  const name = els.uploadMerchantName.value.trim();
-  const location = els.uploadMerchantLocation.value;
-  const description = els.uploadMerchantDesc.value.trim();
-
-  if (!name) {
-    alert('请输入商家名称。');
-    return;
-  }
-  if (name.length > 20) {
-    alert('商家名称不能超过20个字符。');
-    return;
-  }
-
-  els.confirmMerchantUpload.disabled = true;
-  els.confirmMerchantUpload.textContent = '提交中...';
-
-  const client = await ensureSupabaseClient();
-  if (!client) {
-    alert('Supabase SDK 加载失败，请检查网络或稍后重试。');
-    els.confirmMerchantUpload.disabled = false;
-    els.confirmMerchantUpload.textContent = '提交';
-    return;
-  }
-
-  const { data: { user } } = await client.auth.getUser();
-  if (!user) {
-    alert('请先登录。');
-    els.confirmMerchantUpload.disabled = false;
-    els.confirmMerchantUpload.textContent = '提交';
-    return;
-  }
-
-  const { error } = await client.from('merchants').insert({
-    name,
-    location,
-    cover_image_url: state.uploadedImageUrl || null,
-    description: description || null,
-    created_by: user.id,
-    status: 'pending',
-  });
-
-  if (error) {
-    alert(`提交失败：${error.message}`);
-    els.confirmMerchantUpload.disabled = false;
-    els.confirmMerchantUpload.textContent = '提交';
-    return;
-  }
-
-  els.confirmMerchantUpload.disabled = false;
-  els.confirmMerchantUpload.textContent = '提交';
-  els.merchantUploadDialog.close();
-  els.uploadMerchantCover.value = '';
-  els.uploadMerchantPreview.innerHTML = '';
-  state.uploadedImageUrl = null;
-  alert('商家提交成功！等待管理员审核后即可显示。');
-});
-
 els.confirmMerchantUploadPage.addEventListener('click', async (event) => {
   event.preventDefault();
   
@@ -1834,6 +1728,14 @@ els.confirmMerchantUploadPage.addEventListener('click', async (event) => {
   }
   if (name.length > 20) {
     alert('商家名称不能超过20个字符。');
+    return;
+  }
+
+  const existingMerchant = state.merchants.find(
+    m => m.name === name && m.location === location
+  );
+  if (existingMerchant) {
+    alert('该商家已存在。');
     return;
   }
 
