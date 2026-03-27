@@ -13,6 +13,8 @@ const LOCATIONS = [
   '北苑侧楼',
 ];
 
+const VALID_LOCATIONS = LOCATIONS.filter(loc => loc !== '全部');
+
 const STAR_SVG = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>';
 
 const RATING_SORT_OPTIONS = [
@@ -20,6 +22,87 @@ const RATING_SORT_OPTIONS = [
   { value: 'desc', label: '由高到低' },
   { value: 'asc', label: '由低到高' },
 ];
+
+function escapeHtml(text) {
+  if (!text) return '';
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
+}
+
+function showError(message, duration = 3000) {
+  let toast = document.getElementById('errorToast');
+  if (!toast) {
+    toast = document.createElement('div');
+    toast.id = 'errorToast';
+    toast.style.cssText = `
+      position: fixed;
+      top: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #dc2626;
+      color: white;
+      padding: 12px 24px;
+      border-radius: 8px;
+      z-index: 10000;
+      font-size: 14px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+      transition: opacity 0.3s;
+    `;
+    document.body.appendChild(toast);
+  }
+  toast.textContent = message;
+  toast.style.opacity = '1';
+  if (toast._timeout) clearTimeout(toast._timeout);
+  toast._timeout = setTimeout(() => {
+    toast.style.opacity = '0';
+  }, duration);
+}
+
+function showLoading(message = '加载中...') {
+  let loader = document.getElementById('globalLoader');
+  if (!loader) {
+    loader = document.createElement('div');
+    loader.id = 'globalLoader';
+    loader.style.cssText = `
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(255,255,255,0.9);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 9998;
+      font-size: 16px;
+      color: #f97316;
+    `;
+    document.body.appendChild(loader);
+  }
+  loader.innerHTML = `<span>${escapeHtml(message)}</span>`;
+  loader.style.display = 'flex';
+}
+
+function hideLoading() {
+  const loader = document.getElementById('globalLoader');
+  if (loader) loader.style.display = 'none';
+}
+
+async function safeApiCall(fn, errorMsg = '操作失败') {
+  try {
+    const result = await fn();
+    if (result && result.error) {
+      showError(`${errorMsg}：${result.error.message}`);
+      return null;
+    }
+    return result;
+  } catch (error) {
+    console.error(errorMsg, error);
+    showError(`${errorMsg}：${error.message}`);
+    return null;
+  }
+}
 
 const state = {
   currentLocation: LOCATIONS[0],
@@ -38,6 +121,7 @@ const state = {
   cachedAdminData: null,
   cachedAdminDataTime: 0,
   foodScrollPosition: 0,
+  isLoading: false,
 };
 
 const supabaseConfig = window.__SUPABASE_CONFIG__ || {};
@@ -419,14 +503,14 @@ function renderMerchants() {
     .map(
       (merchant) => `
         <article class="merchant-card">
-          <img src="${merchant.cover}" alt="${merchant.name} 封面图" loading="lazy" />
+          <img src="${escapeHtml(merchant.cover)}" alt="${escapeHtml(merchant.name)} 封面图" loading="lazy" onerror="this.src='https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=900&q=80'" />
           <div class="merchant-content">
             <div class="section-heading">
-              <h3>${merchant.name}</h3>
+              <h3>${escapeHtml(merchant.name)}</h3>
               <span class="rating"><span class="rating-star">${STAR_SVG}</span>${merchant.reviewCount > 0 ? merchant.displayScore.toFixed(1) : '暂无评分'}</span>
             </div>
             <div class="merchant-meta">
-              <span>${merchant.location}</span>
+              <span>${escapeHtml(merchant.location)}</span>
               <span>${merchant.reviewCount} 条评价</span>
             </div>
             <button class="primary" onclick="selectMerchant('${merchant.id}')">查看详情</button>
@@ -450,22 +534,22 @@ function renderDetail() {
     .map(
       (review) => {
         const avatarSrc = review.avatarUrl 
-          ? review.avatarUrl 
+          ? escapeHtml(review.avatarUrl)
           : `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(review.user)}`;
         return `
           <div class="review-card">
             <div class="review-row review-card-top">
               <div class="review-user">
-                <img src="${avatarSrc}" alt="${review.user}" class="review-avatar" loading="lazy" />
-                <strong>${review.user}</strong>
+                <img src="${avatarSrc}" alt="${escapeHtml(review.user)}" class="review-avatar" loading="lazy" onerror="this.src='https://api.dicebear.com/7.x/initials/svg?seed=U'" />
+                <strong>${escapeHtml(review.user)}</strong>
               </div>
               <button class="report-button" onclick="reportReview('${review.id}')">举报</button>
             </div>
             <div class="review-row">
               <span class="rating rating-small"><span class="rating-star">${STAR_SVG}</span>${review.rating}.0</span>
-              <small>${review.createdAt}</small>
+              <small>${escapeHtml(review.createdAt)}</small>
             </div>
-            <p>${review.content ? review.content.replace(/\n{3,}/g, '\n\n').replace(/\n/g, '<br>') : '<span class="muted">用户未填写文字评价。</span>'}</p>
+            <p>${review.content ? escapeHtml(review.content).replace(/\n{3,}/g, '\n\n').replace(/\n/g, '<br>') : '<span class="muted">用户未填写文字评价。</span>'}</p>
           </div>
         `;
       },
@@ -477,18 +561,18 @@ function renderDetail() {
   let photoStripHtml = '';
   if (images.length > 0) {
     photoStripHtml = `<div class="photo-strip">${images
-      .map((image, index) => `<img src="${image}" alt="${merchant.name} 图片 ${index + 1}" loading="lazy" onclick="showImageViewer('${image}')" />`)
+      .map((image, index) => `<img src="${escapeHtml(image)}" alt="${escapeHtml(merchant.name)} 图片 ${index + 1}" loading="lazy" onclick="showImageViewer('${escapeHtml(image)}')" onerror="this.style.display='none'" />`)
       .join('')}</div>`;
   }
 
   els.merchantDetail.className = 'merchant-detail panel-stack';
   els.merchantDetail.innerHTML = `
-    <button class="detail-back-button outline" onclick="backToFood()">← 返回</button>
-    <img class="detail-cover" src="${merchant.cover}" alt="${merchant.name} 封面图" onclick="showImageViewer('${merchant.cover}')" />
+    <button class="detail-back-button primary" onclick="backToFood()">返回</button>
+    <img class="detail-cover" src="${escapeHtml(merchant.cover)}" alt="${escapeHtml(merchant.name)} 封面图" onclick="showImageViewer('${escapeHtml(merchant.cover)}')" onerror="this.src='https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=900&q=80'" />
     <div class="section-heading">
       <div>
-        <h3>${merchant.name}</h3>
-        <p class="muted">${merchant.location}</p>
+        <h3>${escapeHtml(merchant.name)}</h3>
+        <p class="muted">${escapeHtml(merchant.location)}</p>
       </div>
       <span class="rating"><span class="rating-star">${STAR_SVG}</span>${summary.reviewCount > 0 ? summary.displayScore.toFixed(1) : '暂无评分'}</span>
     </div>
@@ -818,11 +902,11 @@ async function deleteMerchant(merchantId) {
     .eq('id', merchantId);
 
   if (error) {
-    alert(`删除失败：${error.message}`);
+    showError(`删除失败：${error.message}`);
     return;
   }
 
-  alert('商家已删除！');
+  showError('商家已删除！', 2000);
   await loadMerchants();
   renderAdminMerchantList();
 }
@@ -850,11 +934,11 @@ async function saveMerchantName(merchantId) {
   
   const newName = nameInput.value.trim();
   if (!newName) {
-    alert('请输入商家名称。');
+    showError('请输入商家名称。');
     return;
   }
   if (newName.length > 20) {
-    alert('商家名称不能超过20个字符。');
+    showError('商家名称不能超过20个字符。');
     return;
   }
 
@@ -867,11 +951,11 @@ async function saveMerchantName(merchantId) {
     .eq('id', merchantId);
 
   if (error) {
-    alert(`修改失败：${error.message}`);
+    showError(`修改失败：${error.message}`);
     return;
   }
 
-  alert('商家名称已修改！');
+  showError('商家名称已修改！', 2000);
   await loadMerchants();
   renderAdminMerchantDetail();
 }
@@ -905,11 +989,11 @@ async function saveMerchantLocation(merchantId) {
     .eq('id', merchantId);
 
   if (error) {
-    alert(`修改失败：${error.message}`);
+    showError(`修改失败：${error.message}`);
     return;
   }
 
-  alert('商家位置已修改！');
+  showError('商家位置已修改！', 2000);
   await loadMerchants();
   renderAdminMerchantDetail();
 }
@@ -919,14 +1003,14 @@ window.updateMerchantCover = async (merchantId, inputElement) => {
   if (!file) return;
 
   if (!file.type.startsWith('image/')) {
-    alert('请选择图片文件。');
+    showError('请选择图片文件。');
     inputElement.value = '';
     return;
   }
 
   const client = await ensureSupabaseClient();
   if (!client) {
-    alert('Supabase SDK 加载失败。');
+    showError('Supabase SDK 加载失败。');
     return;
   }
 
@@ -941,7 +1025,7 @@ window.updateMerchantCover = async (merchantId, inputElement) => {
       });
 
     if (uploadError) {
-      alert(`封面上传失败：${uploadError.message}`);
+      showError(`封面上传失败：${uploadError.message}`);
       return;
     }
 
@@ -957,26 +1041,26 @@ window.updateMerchantCover = async (merchantId, inputElement) => {
       .eq('id', merchantId);
 
     if (updateError) {
-      alert(`封面更新失败：${updateError.message}`);
+      showError(`封面更新失败：${updateError.message}`);
       return;
     }
 
-    alert('封面已更新！');
+    showError('封面已更新！', 2000);
     await loadMerchants();
     renderAdminMerchantDetail();
   } catch (err) {
-    alert(`操作失败：${err.message}`);
+    showError(`操作失败：${err.message}`);
   }
 };
 
 async function openAuthDialog() {
   if (!supabaseUrl || !supabaseAnonKey) {
-    alert('请先在 window.__SUPABASE_CONFIG__ 中配置 Supabase URL 和 anon key。');
+    showError('请先在 window.__SUPABASE_CONFIG__ 中配置 Supabase URL 和 anon key。');
     return;
   }
   const client = await ensureSupabaseClient();
   if (!client) {
-    alert('Supabase SDK 加载失败，请检查网络或稍后重试。');
+    showError('Supabase SDK 加载失败，请检查网络或稍后重试。');
     return;
   }
   els.authDialog.showModal();
@@ -987,7 +1071,7 @@ window.openAuthDialog = openAuthDialog;
 
 function requireLogin(actionName) {
   if (!state.currentUser) {
-    alert(`${actionName} 需要先登录，系统将引导你进入学号登录。`);
+    showError(`${actionName} 需要先登录，系统将引导你进入学号登录。`);
     openAuthDialog();
     return false;
   }
@@ -1018,13 +1102,13 @@ window.reportReview = async (reviewId) => {
 
   const client = await ensureSupabaseClient();
   if (!client) {
-    alert('Supabase SDK 加载失败，请检查网络或稍后重试。');
+    showError('Supabase SDK 加载失败，请检查网络或稍后重试。');
     return;
   }
 
   const { data: { user } } = await client.auth.getUser();
   if (!user) {
-    alert('请先登录。');
+    showError('请先登录。');
     return;
   }
 
@@ -1036,7 +1120,7 @@ window.reportReview = async (reviewId) => {
     .single();
 
   if (existingReport) {
-    alert('您已经举报过这条评价了。');
+    showError('您已经举报过这条评价了。');
     return;
   }
 
@@ -1049,11 +1133,11 @@ window.reportReview = async (reviewId) => {
     });
 
   if (reportError) {
-    alert(`举报失败：${reportError.message}`);
+    showError(`举报失败：${reportError.message}`);
     return;
   }
 
-  alert('举报成功！感谢您的反馈。');
+  showError('举报成功！感谢您的反馈。', 2000);
   await loadMerchants();
   renderDetail();
 };
@@ -1062,19 +1146,19 @@ window.writeReview = async () => {
   if (!requireLogin('发布评价')) return;
 
   if (!state.selectedMerchantId) {
-    alert('请先选择一个商家。');
+    showError('请先选择一个商家。');
     return;
   }
 
   const client = await ensureSupabaseClient();
   if (!client) {
-    alert('Supabase SDK 加载失败，请检查网络或稍后重试。');
+    showError('Supabase SDK 加载失败，请检查网络或稍后重试。');
     return;
   }
 
   const { data: { user } } = await client.auth.getUser();
   if (!user) {
-    alert('请先登录。');
+    showError('请先登录。');
     return;
   }
 
@@ -1163,7 +1247,7 @@ window.approveMerchant = async (merchantId) => {
     .single();
 
   if (fetchError) {
-    alert(`获取商家信息失败：${fetchError.message}`);
+    showError(`获取商家信息失败：${fetchError.message}`);
     return;
   }
 
@@ -1186,22 +1270,26 @@ window.approveMerchant = async (merchantId) => {
       .eq('merchant_id', merchantId);
 
     if (newMerchantReviews && newMerchantReviews.length > 0) {
-      for (const review of newMerchantReviews) {
-        const { data: existingReview } = await client
-          .from('reviews')
-          .select('id')
-          .eq('merchant_id', existingMerchant.id)
-          .eq('user_id', review.user_id)
-          .maybeSingle();
-
-        if (!existingReview) {
-          await client.from('reviews').insert({
-            merchant_id: existingMerchant.id,
-            user_id: review.user_id,
-            rating: review.rating,
-            content: review.content,
-          });
-        }
+      const userIds = newMerchantReviews.map(r => r.user_id);
+      const { data: existingReviews } = await client
+        .from('reviews')
+        .select('user_id')
+        .eq('merchant_id', existingMerchant.id)
+        .in('user_id', userIds);
+      
+      const existingUserIds = new Set((existingReviews || []).map(r => r.user_id));
+      
+      const reviewsToInsert = newMerchantReviews
+        .filter(r => !existingUserIds.has(r.user_id))
+        .map(r => ({
+          merchant_id: existingMerchant.id,
+          user_id: r.user_id,
+          rating: r.rating,
+          content: r.content,
+        }));
+      
+      if (reviewsToInsert.length > 0) {
+        await client.from('reviews').insert(reviewsToInsert);
       }
     }
 
@@ -1227,11 +1315,11 @@ window.approveMerchant = async (merchantId) => {
       .eq('id', merchantId);
 
     if (deleteError) {
-      alert(`合并失败：${deleteError.message}`);
+      showError(`合并失败：${deleteError.message}`);
       return;
     }
 
-    alert('商家已合并至已有商家！');
+    showError('商家已合并至已有商家！', 2000);
     invalidateAdminDataCache();
     invalidatePlatformAverageCache();
     await loadMerchants();
@@ -1245,7 +1333,7 @@ window.approveMerchant = async (merchantId) => {
     .eq('id', merchantId);
 
   if (error) {
-    alert(`审核通过失败：${error.message}`);
+    showError(`审核通过失败：${error.message}`);
     return;
   }
 
@@ -1258,7 +1346,7 @@ window.approveMerchant = async (merchantId) => {
     });
   }
 
-  alert('商家已通过审核！');
+  showError('商家已通过审核！', 2000);
   invalidateAdminDataCache();
   invalidatePlatformAverageCache();
   await loadMerchants();
@@ -1275,11 +1363,11 @@ window.rejectMerchant = async (merchantId) => {
     .eq('id', merchantId);
 
   if (error) {
-    alert(`拒绝失败：${error.message}`);
+    showError(`拒绝失败：${error.message}`);
     return;
   }
 
-  alert('商家已被拒绝。');
+  showError('商家已被拒绝。', 2000);
   invalidateAdminDataCache();
   await renderAdminPendingMerchants();
 };
@@ -1294,11 +1382,11 @@ window.hideReview = async (reviewId) => {
     .eq('id', reviewId);
 
   if (error) {
-    alert(`隐藏失败：${error.message}`);
+    showError(`隐藏失败：${error.message}`);
     return;
   }
 
-  alert('评价已隐藏。');
+  showError('评价已隐藏。', 2000);
   invalidateAdminDataCache();
   await loadMerchants();
   renderDetail();
@@ -1314,11 +1402,11 @@ window.dismissReports = async (reviewId) => {
     .eq('id', reviewId);
 
   if (error) {
-    alert(`忽略举报失败：${error.message}`);
+    showError(`忽略举报失败：${error.message}`);
     return;
   }
 
-  alert('已忽略举报，举报计数已重置。');
+  showError('已忽略举报，举报计数已重置。', 2000);
   invalidateAdminDataCache();
   await renderAdminReportedReviews();
 };
@@ -1328,20 +1416,20 @@ window.uploadMerchantImage = async (merchantId, inputElement) => {
   if (!file) return;
 
   if (!file.type.startsWith('image/')) {
-    alert('请选择图片文件。');
+    showError('请选择图片文件。');
     inputElement.value = '';
     return;
   }
 
   const client = await ensureSupabaseClient();
   if (!client) {
-    alert('Supabase SDK 加载失败。');
+    showError('Supabase SDK 加载失败。');
     return;
   }
 
   const { data: { user } } = await client.auth.getUser();
   if (!user) {
-    alert('请先登录。');
+    showError('请先登录。');
     return;
   }
 
@@ -1356,7 +1444,7 @@ window.uploadMerchantImage = async (merchantId, inputElement) => {
       });
 
     if (uploadError) {
-      alert(`图片上传失败：${uploadError.message}`);
+      showError(`图片上传失败：${uploadError.message}`);
       return;
     }
 
@@ -1386,16 +1474,16 @@ window.uploadMerchantImage = async (merchantId, inputElement) => {
       });
 
     if (insertError) {
-      alert(`图片保存失败：${insertError.message}`);
+      showError(`图片保存失败：${insertError.message}`);
       return;
     }
 
     inputElement.value = '';
-    alert('照片上传成功！');
+    showError('照片上传成功！', 2000);
     await loadMerchants();
     renderDetail();
   } catch (err) {
-    alert(`图片处理失败：${err.message}`);
+    showError(`图片处理失败：${err.message}`);
   }
 };
 
@@ -1404,13 +1492,13 @@ window.deleteMerchantImage = async (merchantId, imageUrl) => {
 
   const client = await ensureSupabaseClient();
   if (!client) {
-    alert('Supabase SDK 加载失败。');
+    showError('Supabase SDK 加载失败。');
     return;
   }
 
   const { data: { user } } = await client.auth.getUser();
   if (!user) {
-    alert('请先登录。');
+    showError('请先登录。');
     return;
   }
 
@@ -1421,7 +1509,7 @@ window.deleteMerchantImage = async (merchantId, imageUrl) => {
     .eq('image_url', imageUrl);
 
   if (deleteError) {
-    alert(`删除失败：${deleteError.message}`);
+    showError(`删除失败：${deleteError.message}`);
     return;
   }
 
@@ -1437,14 +1525,14 @@ window.deleteMerchantImage = async (merchantId, imageUrl) => {
     console.warn('Storage file deletion skipped:', e);
   }
 
-  alert('照片已删除！');
+  showError('照片已删除！', 2000);
   await loadMerchants();
   renderDetail();
 };
 
 window.openEditProfile = () => {
   if (!state.currentUser) {
-    alert('请先登录。');
+    showError('请先登录。');
     return;
   }
   els.editNickname.value = state.currentUser.nickname || '';
@@ -1463,7 +1551,7 @@ window.logout = async () => {
   renderProfile();
   renderAdmin();
   setActiveView('food');
-  alert('已退出登录。');
+  showError('已退出登录。', 2000);
 };
 window.openMerchantUpload = async () => {
   if (!requireLogin('上传商家')) return;
@@ -1539,16 +1627,16 @@ els.confirmLogin.addEventListener('click', async (event) => {
   const studentId = els.studentIdInput.value.trim();
   const password = els.passwordInput.value.trim();
   if (!studentIdValid(studentId)) {
-    alert('学号错误');
+    showError('学号错误');
     return;
   }
   if (!password) {
-    alert('请输入密码。');
+    showError('请输入密码。');
     return;
   }
   const client = await ensureSupabaseClient();
   if (!client) {
-    alert('Supabase SDK 加载失败，请检查网络或稍后重试。');
+    showError('Supabase SDK 加载失败，请检查网络或稍后重试。');
     return;
   }
 
@@ -1557,14 +1645,14 @@ els.confirmLogin.addEventListener('click', async (event) => {
 
   if (error) {
     if (error.message.includes('Invalid login credentials') || error.message.includes('user not found')) {
-      alert('请先注册');
+      showError('请先注册');
       els.authDialog.close();
       els.passwordInput.value = '';
       els.registerStudentIdInput.value = studentId;
       els.registerDialog.showModal();
       return;
     }
-    alert(`登录失败：${error.message}`);
+    showError(`登录失败：${error.message}`);
     return;
   }
 
@@ -1596,7 +1684,7 @@ els.uploadMerchantCoverPage.addEventListener('change', async (event) => {
   }
 
   if (!file.type.startsWith('image/')) {
-    alert('请选择图片文件。');
+    showError('请选择图片文件。');
     event.target.value = '';
     state.uploadedImageUrlPage = null;
     return;
@@ -1614,14 +1702,14 @@ els.uploadMerchantCoverPage.addEventListener('change', async (event) => {
     
     const client = await ensureSupabaseClient();
     if (!client) {
-      alert('Supabase SDK 加载失败。');
+      showError('Supabase SDK 加载失败。');
       state.uploadedImageUrlPage = null;
       return;
     }
 
     const { data: { user } } = await client.auth.getUser();
     if (!user) {
-      alert('请先登录。');
+      showError('请先登录。');
       state.uploadedImageUrlPage = null;
       return;
     }
@@ -1634,7 +1722,7 @@ els.uploadMerchantCoverPage.addEventListener('change', async (event) => {
       });
 
     if (uploadError) {
-      alert(`图片上传失败：${uploadError.message}`);
+      showError(`图片上传失败：${uploadError.message}`);
       state.uploadedImageUrlPage = null;
       return;
     }
@@ -1645,7 +1733,7 @@ els.uploadMerchantCoverPage.addEventListener('change', async (event) => {
 
     state.uploadedImageUrlPage = urlData.publicUrl;
   } catch (err) {
-    alert(`图片处理失败：${err.message}`);
+    showError(`图片处理失败：${err.message}`);
     state.uploadedImageUrlPage = null;
   }
 });
@@ -1657,20 +1745,20 @@ document.addEventListener('change', async (event) => {
   if (!file) return;
 
   if (!file.type.startsWith('image/')) {
-    alert('请选择图片文件。');
+    showError('请选择图片文件。');
     event.target.value = '';
     return;
   }
 
   const client = await ensureSupabaseClient();
   if (!client) {
-    alert('Supabase SDK 加载失败。');
+    showError('Supabase SDK 加载失败。');
     return;
   }
 
   const { data: { user } } = await client.auth.getUser();
   if (!user) {
-    alert('请先登录。');
+    showError('请先登录。');
     return;
   }
 
@@ -1686,7 +1774,7 @@ document.addEventListener('change', async (event) => {
       });
 
     if (uploadError) {
-      alert(`头像上传失败：${uploadError.message}`);
+      showError(`头像上传失败：${uploadError.message}`);
       return;
     }
 
@@ -1702,7 +1790,7 @@ document.addEventListener('change', async (event) => {
       .eq('id', user.id);
 
     if (updateError) {
-      alert(`头像更新失败：${updateError.message}`);
+      showError(`头像更新失败：${updateError.message}`);
       return;
     }
 
@@ -1711,11 +1799,11 @@ document.addEventListener('change', async (event) => {
     if (avatarImg) {
       avatarImg.src = avatarUrl;
     }
-    alert('头像更新成功！');
+    showError('头像更新成功！', 2000);
     await loadMerchants();
     renderDetail();
   } catch (err) {
-    alert(`头像处理失败：${err.message}`);
+    showError(`头像处理失败：${err.message}`);
   }
 });
 
@@ -1737,24 +1825,24 @@ els.confirmRegister.addEventListener('click', async (event) => {
   const password = els.registerPasswordInput.value.trim();
 
   if (!nickname) {
-    alert('请输入昵称。');
+    showError('请输入昵称。');
     return;
   }
   if (nickname.length > 20) {
-    alert('昵称不能超过20个字符。');
+    showError('昵称不能超过20个字符。');
     return;
   }
   if (!studentIdValid(studentId)) {
-    alert('学号错误');
+    showError('学号错误');
     return;
   }
   if (!password) {
-    alert('请输入密码。');
+    showError('请输入密码。');
     return;
   }
   const client = await ensureSupabaseClient();
   if (!client) {
-    alert('Supabase SDK 加载失败，请检查网络或稍后重试。');
+    showError('Supabase SDK 加载失败，请检查网络或稍后重试。');
     return;
   }
 
@@ -1765,17 +1853,17 @@ els.confirmRegister.addEventListener('click', async (event) => {
   });
 
   if (error) {
-    alert(`注册失败：${error.message}`);
+    showError(`注册失败：${error.message}`);
     return;
   }
 
   const authUser = data.user;
   if (!authUser) {
-    alert('注册失败：未返回用户信息。');
+    showError('注册失败：未返回用户信息。');
     return;
   }
   if (!data.session) {
-    alert('注册成功，但当前未建立登录会话。请在 Supabase Auth 设置中关闭 Confirm email 后重试。');
+    showError('注册成功，但当前未建立登录会话。请在 Supabase Auth 设置中关闭 Confirm email 后重试。');
     return;
   }
 
@@ -1787,7 +1875,7 @@ els.confirmRegister.addEventListener('click', async (event) => {
   });
 
   if (profileError) {
-    alert(`注册成功，但写入资料失败：${profileError.message}`);
+    showError(`注册成功，但写入资料失败：${profileError.message}`);
     return;
   }
 
@@ -1809,11 +1897,15 @@ els.confirmMerchantUploadPage.addEventListener('click', async (event) => {
   const description = els.uploadMerchantDescPage.value.trim();
 
   if (!name) {
-    alert('请输入商家名称。');
+    showError('请输入商家名称。');
     return;
   }
   if (name.length > 20) {
-    alert('商家名称不能超过20个字符。');
+    showError('商家名称不能超过20个字符。');
+    return;
+  }
+  if (!location || !VALID_LOCATIONS.includes(location)) {
+    showError('请选择有效的位置。');
     return;
   }
 
@@ -1821,26 +1913,29 @@ els.confirmMerchantUploadPage.addEventListener('click', async (event) => {
     m => m.name === name && m.location === location
   );
   if (existingMerchant) {
-    alert('该商家已存在。');
+    showError('该商家已存在。');
     return;
   }
 
   els.confirmMerchantUploadPage.disabled = true;
   els.confirmMerchantUploadPage.textContent = '提交中...';
+  showLoading('正在提交商家信息...');
 
   const client = await ensureSupabaseClient();
   if (!client) {
-    alert('Supabase SDK 加载失败，请检查网络或稍后重试。');
+    showError('Supabase SDK 加载失败，请检查网络或稍后重试。');
     els.confirmMerchantUploadPage.disabled = false;
     els.confirmMerchantUploadPage.textContent = '提交';
+    hideLoading();
     return;
   }
 
   const { data: { user } } = await client.auth.getUser();
   if (!user) {
-    alert('请先登录。');
+    showError('请先登录。');
     els.confirmMerchantUploadPage.disabled = false;
     els.confirmMerchantUploadPage.textContent = '提交';
+    hideLoading();
     return;
   }
 
@@ -1854,9 +1949,10 @@ els.confirmMerchantUploadPage.addEventListener('click', async (event) => {
   });
 
   if (error) {
-    alert(`提交失败：${error.message}`);
+    showError(`提交失败：${error.message}`);
     els.confirmMerchantUploadPage.disabled = false;
     els.confirmMerchantUploadPage.textContent = '提交';
+    hideLoading();
     return;
   }
 
@@ -1865,7 +1961,8 @@ els.confirmMerchantUploadPage.addEventListener('click', async (event) => {
   els.uploadMerchantCoverPage.value = '';
   els.uploadMerchantPreviewPage.innerHTML = '';
   state.uploadedImageUrlPage = null;
-  alert('商家提交成功！等待管理员审核后即可显示。');
+  hideLoading();
+  showError('商家提交成功！等待管理员审核后即可显示。', 3000);
   setActiveView('food');
 });
 
@@ -1875,19 +1972,19 @@ els.confirmReview.addEventListener('click', async (event) => {
   const content = els.reviewContent.value.trim();
 
   if (!state.selectedMerchantId) {
-    alert('请先选择一个商家。');
+    showError('请先选择一个商家。');
     return;
   }
 
   const client = await ensureSupabaseClient();
   if (!client) {
-    alert('Supabase SDK 加载失败，请检查网络或稍后重试。');
+    showError('Supabase SDK 加载失败，请检查网络或稍后重试。');
     return;
   }
 
   const { data: { user } } = await client.auth.getUser();
   if (!user) {
-    alert('请先登录。');
+    showError('请先登录。');
     return;
   }
 
@@ -1911,14 +2008,14 @@ els.confirmReview.addEventListener('click', async (event) => {
   }
 
   if (error) {
-    alert(`提交失败：${error.message}`);
+    showError(`提交失败：${error.message}`);
     return;
   }
 
   els.reviewDialog.close();
   els.reviewContent.value = '';
   state.editingReviewId = null;
-  alert('评价提交成功！');
+  showError('评价提交成功！', 2000);
   await loadMerchants();
   renderDetail();
 });
@@ -1932,43 +2029,43 @@ els.confirmEditProfile.addEventListener('click', async (event) => {
   const confirmPwd = els.confirmNewPassword.value;
 
   if (!newNickname && !currentPwd && !newPwd) {
-    alert('请至少修改一项内容。');
+    showError('请至少修改一项内容。');
     return;
   }
 
   if (newNickname && newNickname.length > 20) {
-    alert('昵称不能超过20个字符。');
+    showError('昵称不能超过20个字符。');
     return;
   }
 
   if (newPwd || confirmPwd || currentPwd) {
     if (!currentPwd) {
-      alert('请输入当前密码。');
+      showError('请输入当前密码。');
       return;
     }
     if (!newPwd) {
-      alert('请输入新密码。');
+      showError('请输入新密码。');
       return;
     }
     if (newPwd !== confirmPwd) {
-      alert('两次输入的新密码不一致。');
+      showError('两次输入的新密码不一致。');
       return;
     }
     if (newPwd.length < 6) {
-      alert('新密码至少6个字符。');
+      showError('新密码至少6个字符。');
       return;
     }
   }
 
   const client = await ensureSupabaseClient();
   if (!client) {
-    alert('Supabase SDK 加载失败。');
+    showError('Supabase SDK 加载失败。');
     return;
   }
 
   const { data: { user } } = await client.auth.getUser();
   if (!user) {
-    alert('请先登录。');
+    showError('请先登录。');
     return;
   }
 
@@ -1980,7 +2077,7 @@ els.confirmEditProfile.addEventListener('click', async (event) => {
     });
 
     if (signInError) {
-      alert('当前密码错误。');
+      showError('当前密码错误。');
       return;
     }
 
@@ -1989,7 +2086,7 @@ els.confirmEditProfile.addEventListener('click', async (event) => {
     });
 
     if (updateError) {
-      alert(`密码修改失败：${updateError.message}`);
+      showError(`密码修改失败：${updateError.message}`);
       return;
     }
   }
@@ -2001,7 +2098,7 @@ els.confirmEditProfile.addEventListener('click', async (event) => {
       .eq('id', user.id);
 
     if (nicknameError) {
-      alert(`昵称修改失败：${nicknameError.message}`);
+      showError(`昵称修改失败：${nicknameError.message}`);
       return;
     }
 
@@ -2009,6 +2106,21 @@ els.confirmEditProfile.addEventListener('click', async (event) => {
   }
 
   els.editProfileDialog.close();
-  alert('个人资料已更新！');
+  showError('个人资料已更新！', 2000);
   await loadCurrentUser();
+});
+
+window.addEventListener('beforeunload', () => {
+  if (searchDebounceTimer) {
+    clearTimeout(searchDebounceTimer);
+    searchDebounceTimer = null;
+  }
+  const toast = document.getElementById('errorToast');
+  if (toast && toast._timeout) {
+    clearTimeout(toast._timeout);
+  }
+  const loader = document.getElementById('globalLoader');
+  if (loader) {
+    loader.remove();
+  }
 });
