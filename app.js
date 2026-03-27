@@ -37,6 +37,7 @@ const state = {
   adminMerchantDetail: false,
   cachedAdminData: null,
   cachedAdminDataTime: 0,
+  foodScrollPosition: 0,
 };
 
 const supabaseConfig = window.__SUPABASE_CONFIG__ || {};
@@ -482,6 +483,7 @@ function renderDetail() {
 
   els.merchantDetail.className = 'merchant-detail panel-stack';
   els.merchantDetail.innerHTML = `
+    <button class="detail-back-button outline" onclick="backToFood()">← 返回</button>
     <img class="detail-cover" src="${merchant.cover}" alt="${merchant.name} 封面图" onclick="showImageViewer('${merchant.cover}')" />
     <div class="section-heading">
       <div>
@@ -993,9 +995,19 @@ function requireLogin(actionName) {
 }
 
 window.selectMerchant = (merchantId) => {
+  state.foodScrollPosition = window.scrollY;
   state.selectedMerchantId = merchantId;
   renderDetail();
   setActiveView('detail');
+  window.scrollTo(0, 0);
+};
+
+window.backToFood = () => {
+  state.selectedMerchantId = null;
+  setActiveView('food');
+  setTimeout(() => {
+    window.scrollTo(0, state.foodScrollPosition);
+  }, 0);
 };
 
 window.showImageViewer = showImageViewer;
@@ -1146,12 +1158,84 @@ window.approveMerchant = async (merchantId) => {
 
   const { data: merchant, error: fetchError } = await client
     .from('merchants')
-    .select('description, created_by')
+    .select('name, location, description, created_by, cover_image_url')
     .eq('id', merchantId)
     .single();
 
   if (fetchError) {
     alert(`获取商家信息失败：${fetchError.message}`);
+    return;
+  }
+
+  const { data: existingMerchant } = await client
+    .from('merchants')
+    .select('id')
+    .eq('name', merchant.name)
+    .eq('location', merchant.location)
+    .eq('status', 'approved')
+    .neq('id', merchantId)
+    .maybeSingle();
+
+  if (existingMerchant) {
+    const confirmMerge = confirm(`已存在同名同位置的商家，是否合并？\n\n合并后：\n- 新商家的评价将迁移至原商家\n- 新商家的图片将迁移至原商家\n- 新商家记录将被删除`);
+    if (!confirmMerge) return;
+
+    const { data: newMerchantReviews } = await client
+      .from('reviews')
+      .select('user_id, rating, content')
+      .eq('merchant_id', merchantId);
+
+    if (newMerchantReviews && newMerchantReviews.length > 0) {
+      for (const review of newMerchantReviews) {
+        const { data: existingReview } = await client
+          .from('reviews')
+          .select('id')
+          .eq('merchant_id', existingMerchant.id)
+          .eq('user_id', review.user_id)
+          .maybeSingle();
+
+        if (!existingReview) {
+          await client.from('reviews').insert({
+            merchant_id: existingMerchant.id,
+            user_id: review.user_id,
+            rating: review.rating,
+            content: review.content,
+          });
+        }
+      }
+    }
+
+    if (merchant.cover_image_url) {
+      const { data: existingImages } = await client
+        .from('dish_images')
+        .select('id')
+        .eq('merchant_id', existingMerchant.id)
+        .limit(1);
+
+      if (!existingImages || existingImages.length === 0) {
+        await client.from('dish_images').insert({
+          merchant_id: existingMerchant.id,
+          image_url: merchant.cover_image_url,
+          uploaded_by: merchant.created_by,
+        });
+      }
+    }
+
+    const { error: deleteError } = await client
+      .from('merchants')
+      .delete()
+      .eq('id', merchantId);
+
+    if (deleteError) {
+      alert(`合并失败：${deleteError.message}`);
+      return;
+    }
+
+    alert('商家已合并至已有商家！');
+    invalidateAdminDataCache();
+    invalidatePlatformAverageCache();
+    await loadMerchants();
+    await renderAdminPendingMerchants();
     return;
   }
 
