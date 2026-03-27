@@ -17,8 +17,8 @@ const STAR_SVG = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.
 
 const RATING_SORT_OPTIONS = [
   { value: 'none', label: '无排序' },
-  { value: 'desc', label: '评分降序' },
-  { value: 'asc', label: '评分升序' },
+  { value: 'desc', label: '由高到低' },
+  { value: 'asc', label: '由低到高' },
 ];
 
 const state = {
@@ -388,6 +388,8 @@ function getFilteredMerchants() {
     filtered = filtered.sort((a, b) => b.bayes - a.bayes);
   } else if (state.ratingSort === 'asc') {
     filtered = filtered.sort((a, b) => a.bayes - b.bayes);
+  } else {
+    filtered = filtered.sort((a, b) => (b.displayScore * b.reviewCount) - (a.displayScore * a.reviewCount));
   }
 
   return filtered;
