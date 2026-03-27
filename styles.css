@@ -580,16 +580,21 @@ menu {
   touch-action: none;
 }
 .detail-back-button {
-  position: sticky;
-  top: 0;
-  z-index: 5;
-  margin-bottom: 12px;
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  z-index: 100;
   padding: 8px 16px;
   font-size: 14px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
 }
 .detail-cover {
   cursor: pointer;
   transition: transform 0.2s;
+  border: 3px solid var(--primary);
+  border-radius: 12px;
+  margin-top: 20px;
+  width: calc(100% - 8px);
 }
 .detail-cover:hover {
   transform: scale(1.02);
