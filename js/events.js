@@ -147,6 +147,11 @@ export function setupEventDelegation() {
       return Math.hypot(dx, dy);
     }
 
+    function applyScale(newScale) {
+      scale = Math.min(5, newScale);
+      svg.style.transform = `scale(${scale})`;
+    }
+
     svg.addEventListener('touchstart', (e) => {
       if (e.touches.length === 2) {
         lastDist = getDistance(e.touches[0], e.touches[1]);
@@ -158,8 +163,7 @@ export function setupEventDelegation() {
         e.preventDefault();
         const dist = getDistance(e.touches[0], e.touches[1]);
         const delta = dist / lastDist;
-        scale = Math.min(5, Math.max(0.5, scale * delta));
-        svg.style.transform = `scale(${scale})`;
+        applyScale(scale * delta);
         lastDist = dist;
       }
     }, { passive: false });
@@ -167,9 +171,50 @@ export function setupEventDelegation() {
     svg.addEventListener('touchend', () => {
       lastDist = 0;
     });
+
+    const zoomInBtn = document.getElementById('marketZoomIn');
+    const zoomOutBtn = document.getElementById('marketZoomOut');
+    if (zoomInBtn) {
+      zoomInBtn.addEventListener('click', () => applyScale(scale * 1.25));
+    }
+    if (zoomOutBtn) {
+      zoomOutBtn.addEventListener('click', () => applyScale(scale / 1.25));
+    }
   }
 
   initMarketPinchZoom();
+
+  function initMarketBlockNumbers() {
+    const svg = document.getElementById('marketSvg');
+    if (!svg) return;
+    const rects = Array.from(svg.querySelectorAll('rect'));
+    const sorted = rects.slice().sort((a, b) => {
+      const ay = parseFloat(a.getAttribute('y'));
+      const by = parseFloat(b.getAttribute('y'));
+      const ax = parseFloat(a.getAttribute('x'));
+      const bx = parseFloat(b.getAttribute('x'));
+      if (ay !== by) return ay - by;
+      return ax - bx;
+    });
+    sorted.forEach((rect, i) => {
+      const x = parseFloat(rect.getAttribute('x'));
+      const y = parseFloat(rect.getAttribute('y'));
+      const w = parseFloat(rect.getAttribute('width'));
+      const h = parseFloat(rect.getAttribute('height'));
+      const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+      text.setAttribute('x', x + w / 2);
+      text.setAttribute('y', y + h / 2);
+      text.setAttribute('text-anchor', 'middle');
+      text.setAttribute('dominant-baseline', 'central');
+      text.setAttribute('font-size', '36');
+      text.setAttribute('fill', '#6b7280');
+      text.setAttribute('pointer-events', 'none');
+      text.textContent = i + 1;
+      svg.appendChild(text);
+    });
+  }
+
+  initMarketBlockNumbers();
 
   window.addEventListener('beforeunload', () => {
     const timer = getSearchDebounceTimer();
