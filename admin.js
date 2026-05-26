@@ -335,13 +335,139 @@ export async function updateMerchantCover(merchantId, inputElement) {
   }
 }
 
+async function findDuplicateMerchant(client, merchantName, merchantLocation, excludeId) {
+  const { data } = await client
+    .from('merchants')
+    .select('id')
+    .eq('name', merchantName)
+    .eq('location', merchantLocation)
+    .eq('status', 'approved')
+    .neq('id', excludeId)
+    .maybeSingle();
+
+  return data;
+}
+
+async function migrateReviews(client, fromMerchantId, toMerchantId) {
+  const { data: newMerchantReviews } = await client
+    .from('reviews')
+    .select('user_id, rating, content')
+    .eq('merchant_id', fromMerchantId);
+
+  if (!newMerchantReviews || newMerchantReviews.length === 0) {
+    return { migrated: 0 };
+  }
+
+  const userIds = newMerchantReviews.map(r => r.user_id);
+  const { data: existingReviews } = await client
+    .from('reviews')
+    .select('user_id')
+    .eq('merchant_id', toMerchantId)
+    .in('user_id', userIds);
+
+  const existingUserIds = new Set((existingReviews || []).map(r => r.user_id));
+
+  const reviewsToInsert = newMerchantReviews
+    .filter(r => !existingUserIds.has(r.user_id))
+    .map(r => ({
+      merchant_id: toMerchantId,
+      user_id: r.user_id,
+      rating: r.rating,
+      content: r.content,
+    }));
+
+  if (reviewsToInsert.length > 0) {
+    const { error } = await client.from('reviews').insert(reviewsToInsert);
+    if (error) throw new Error(`评价迁移失败: ${error.message}`);
+  }
+
+  return { migrated: reviewsToInsert.length };
+}
+
+async function migrateCoverImage(client, merchant, toMerchantId) {
+  if (!merchant.cover_image_url) {
+    return { migrated: false };
+  }
+
+  const { data: existingImages } = await client
+    .from('dish_images')
+    .select('id')
+    .eq('merchant_id', toMerchantId)
+    .limit(1);
+
+  if (existingImages && existingImages.length > 0) {
+    return { migrated: false };
+  }
+
+  const { error } = await client.from('dish_images').insert({
+    merchant_id: toMerchantId,
+    image_url: merchant.cover_image_url,
+    uploaded_by: merchant.created_by,
+  });
+
+  if (error) throw new Error(`图片迁移失败: ${error.message}`);
+
+  return { migrated: true };
+}
+
+async function mergeMerchants(client, newMerchant, existingMerchantId) {
+  const confirmMerge = confirm(
+    `已存在同名同位置的商家，是否合并？\n\n合并后：\n- 新商家的评价将迁移至原商家\n- 新商家的图片将迁移至原商家\n- 新商家记录将被删除`
+  );
+  if (!confirmMerge) {
+    return { merged: false, reason: 'cancelled' };
+  }
+
+  try {
+    await migrateReviews(client, newMerchant.id, existingMerchantId);
+    await migrateCoverImage(client, newMerchant, existingMerchantId);
+
+    const deleteResult = await safeApiCall(
+      () => client.from('merchants').delete().eq('id', newMerchant.id),
+      '合并失败'
+    );
+    if (!deleteResult) {
+      return { merged: false, reason: 'delete_failed' };
+    }
+
+    return { merged: true };
+  } catch (error) {
+    showError(`合并失败: ${error.message}`);
+    return { merged: false, reason: error.message };
+  }
+}
+
+async function approveMerchantDirectly(client, merchant) {
+  const approveResult = await safeApiCall(
+    () => client.from('merchants').update({ status: 'approved' }).eq('id', merchant.id),
+    '审核通过失败'
+  );
+  if (!approveResult) {
+    return { approved: false };
+  }
+
+  if (merchant.description && merchant.description.trim() && merchant.created_by) {
+    const { error: reviewError } = await client.from('reviews').insert({
+      merchant_id: merchant.id,
+      user_id: merchant.created_by,
+      rating: 5,
+      content: merchant.description.trim(),
+    });
+    if (reviewError) {
+      console.error('创建初始评价失败:', reviewError);
+    }
+  }
+
+  return { approved: true };
+}
+
 export async function approveMerchant(merchantId) {
   const client = await requireClient();
   if (!client) return;
 
   const { data: merchant, error: fetchError } = await client
     .from('merchants')
-    .select('name, location, description, created_by, cover_image_url')
+    .select('id, name, location, description, created_by, cover_image_url')
     .eq('id', merchantId)
     .single();
 
@@ -350,95 +476,27 @@ export async function approveMerchant(merchantId) {
     return;
   }
 
-  const { data: existingMerchant } = await client
-    .from('merchants')
-    .select('id')
-    .eq('name', merchant.name)
-    .eq('location', merchant.location)
-    .eq('status', 'approved')
-    .neq('id', merchantId)
-    .maybeSingle();
-
-  if (existingMerchant) {
-    const confirmMerge = confirm(`已存在同名同位置的商家，是否合并？\n\n合并后：\n- 新商家的评价将迁移至原商家\n- 新商家的图片将迁移至原商家\n- 新商家记录将被删除`);
-    if (!confirmMerge) return;
-
-    const { data: newMerchantReviews } = await client
-      .from('reviews')
-      .select('user_id, rating, content')
-      .eq('merchant_id', merchantId);
-
-    if (newMerchantReviews && newMerchantReviews.length > 0) {
-      const userIds = newMerchantReviews.map(r => r.user_id);
-      const { data: existingReviews } = await client
-        .from('reviews')
-        .select('user_id')
-        .eq('merchant_id', existingMerchant.id)
-        .in('user_id', userIds);
-
-      const existingUserIds = new Set((existingReviews || []).map(r => r.user_id));
-
-      const reviewsToInsert = newMerchantReviews
-        .filter(r => !existingUserIds.has(r.user_id))
-        .map(r => ({
-          merchant_id: existingMerchant.id,
-          user_id: r.user_id,
-          rating: r.rating,
-          content: r.content,
-        }));
-
-      if (reviewsToInsert.length > 0) {
-        await client.from('reviews').insert(reviewsToInsert);
-      }
-    }
-
-    if (merchant.cover_image_url) {
-      const { data: existingImages } = await client
-        .from('dish_images')
-        .select('id')
-        .eq('merchant_id', existingMerchant.id)
-        .limit(1);
-
-      if (!existingImages || existingImages.length === 0) {
-        await client.from('dish_images').insert({
-          merchant_id: existingMerchant.id,
-          image_url: merchant.cover_image_url,
-          uploaded_by: merchant.created_by,
-        });
-      }
-    }
-
-    const deleteResult = await safeApiCall(
-      () => client.from('merchants').delete().eq('id', merchantId),
-      '合并失败'
-    );
-    if (!deleteResult) return;
-
-    showError('商家已合并至已有商家', 2000);
-    invalidateAllCaches();
-    setCachedPlatformAverage(null);
-    return 'merged';
-  }
-
-  const approveResult = await safeApiCall(
-    () => client.from('merchants').update({ status: 'approved' }).eq('id', merchantId),
-    '审核通过失败'
+  const existingMerchant = await findDuplicateMerchant(
+    client,
+    merchant.name,
+    merchant.location,
+    merchant.id
   );
-  if (!approveResult) return;
 
-  if (merchant.description && merchant.description.trim() && merchant.created_by) {
-    await client.from('reviews').insert({
-      merchant_id: merchantId,
-      user_id: merchant.created_by,
-      rating: 5,
-      content: merchant.description.trim(),
-    });
+  let result;
+  if (existingMerchant) {
+    result = await mergeMerchants(client, merchant, existingMerchant.id);
+    if (!result.merged) return;
+    showError('商家已合并至已有商家', 2000);
+  } else {
+    result = await approveMerchantDirectly(client, merchant);
+    if (!result.approved) return;
+    showError('商家已通过审核', 2000);
   }
 
-  showError('商家已通过审核', 2000);
   invalidateAllCaches();
   setCachedPlatformAverage(null);
-  return 'approved';
+  return existingMerchant ? 'merged' : 'approved';
 }
 
 export async function rejectMerchant(merchantId) {
