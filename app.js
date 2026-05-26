@@ -281,15 +281,18 @@ const els = {
   searchInput: document.getElementById('searchInput'),
   merchantList: document.getElementById('merchantList'),
   merchantDetail: document.getElementById('merchantDetail'),
+  marketPanel: document.getElementById('marketPanel'),
   profilePanel: document.getElementById('profilePanel'),
   adminPanel: document.getElementById('adminPanel'),
   topbar: document.getElementById('topbar'),
   foodView: document.getElementById('foodView'),
+  marketView: document.getElementById('marketView'),
   detailView: document.getElementById('detailView'),
   profileView: document.getElementById('profileView'),
   adminView: document.getElementById('adminView'),
   uploadMerchantView: document.getElementById('uploadMerchantView'),
   foodTabButton: document.getElementById('foodTabButton'),
+  marketTabButton: document.getElementById('marketTabButton'),
   profileTabButton: document.getElementById('profileTabButton'),
   navSlider: document.getElementById('navSlider'),
   authDialog: document.getElementById('authDialog'),
@@ -376,24 +379,33 @@ function setActiveView(view) {
   state.activeView = view;
   const isFoodView = view === 'food';
   const isDetailView = view === 'detail';
+  const isMarketView = view === 'market';
   const isProfileView = view === 'profile';
   const isAdminView = view === 'admin';
   const isUploadMerchantView = view === 'uploadMerchant';
   const showFoodChrome = isFoodView;
   const showProfileTab = isProfileView || isAdminView;
-  
+  const showMarketTab = isMarketView;
+
   els.topbar.classList.toggle('is-hidden', !showFoodChrome);
   els.foodView.classList.toggle('is-hidden', !isFoodView);
+  els.marketView.classList.toggle('is-hidden', !isMarketView);
   els.detailView.classList.toggle('is-hidden', !isDetailView);
   els.profileView.classList.toggle('is-hidden', !isProfileView);
   els.adminView.classList.toggle('is-hidden', !isAdminView);
   els.uploadMerchantView.classList.toggle('is-hidden', !isUploadMerchantView);
   els.searchInput.classList.toggle('is-hidden', !showFoodChrome);
   els.foodTabButton.classList.toggle('active', isFoodView || isDetailView || isUploadMerchantView);
+  els.marketTabButton.classList.toggle('active', showMarketTab);
   els.profileTabButton.classList.toggle('active', showProfileTab);
-  
+
   if (els.navSlider) {
-    els.navSlider.classList.toggle('right', showProfileTab);
+    els.navSlider.classList.remove('pos-1', 'pos-2');
+    if (showMarketTab) {
+      els.navSlider.classList.add('pos-1');
+    } else if (showProfileTab) {
+      els.navSlider.classList.add('pos-2');
+    }
   }
 }
 
@@ -896,17 +908,13 @@ async function deleteMerchant(merchantId) {
   const client = await ensureSupabaseClient();
   if (!client) return;
 
-  const { error } = await client
-    .from('merchants')
-    .delete()
-    .eq('id', merchantId);
+  const result = await safeApiCall(
+    () => client.from('merchants').delete().eq('id', merchantId),
+    '删除失败'
+  );
+  if (!result) return;
 
-  if (error) {
-    showError(`删除失败：${error.message}`);
-    return;
-  }
-
-  showError('商家已删除！', 2000);
+  showError('商家已删除', 2000);
   await loadMerchants();
   renderAdminMerchantList();
 }
@@ -934,28 +942,24 @@ async function saveMerchantName(merchantId) {
   
   const newName = nameInput.value.trim();
   if (!newName) {
-    showError('请输入商家名称。');
+    showError('请输入商家名称');
     return;
   }
   if (newName.length > 20) {
-    showError('商家名称不能超过20个字符。');
+    showError('商家名称不能超过20个字符');
     return;
   }
 
   const client = await ensureSupabaseClient();
   if (!client) return;
 
-  const { error } = await client
-    .from('merchants')
-    .update({ name: newName })
-    .eq('id', merchantId);
+  const result = await safeApiCall(
+    () => client.from('merchants').update({ name: newName }).eq('id', merchantId),
+    '修改失败'
+  );
+  if (!result) return;
 
-  if (error) {
-    showError(`修改失败：${error.message}`);
-    return;
-  }
-
-  showError('商家名称已修改！', 2000);
+  showError('商家名称已修改', 2000);
   await loadMerchants();
   renderAdminMerchantDetail();
 }
@@ -983,17 +987,13 @@ async function saveMerchantLocation(merchantId) {
   const client = await ensureSupabaseClient();
   if (!client) return;
 
-  const { error } = await client
-    .from('merchants')
-    .update({ location: newLocation })
-    .eq('id', merchantId);
+  const result = await safeApiCall(
+    () => client.from('merchants').update({ location: newLocation }).eq('id', merchantId),
+    '修改失败'
+  );
+  if (!result) return;
 
-  if (error) {
-    showError(`修改失败：${error.message}`);
-    return;
-  }
-
-  showError('商家位置已修改！', 2000);
+  showError('商家位置已修改', 2000);
   await loadMerchants();
   renderAdminMerchantDetail();
 }
@@ -1003,14 +1003,14 @@ window.updateMerchantCover = async (merchantId, inputElement) => {
   if (!file) return;
 
   if (!file.type.startsWith('image/')) {
-    showError('请选择图片文件。');
+    showError('请选择图片文件');
     inputElement.value = '';
     return;
   }
 
   const client = await ensureSupabaseClient();
   if (!client) {
-    showError('Supabase SDK 加载失败。');
+    showError('Supabase SDK 加载失败');
     return;
   }
 
@@ -1045,7 +1045,7 @@ window.updateMerchantCover = async (merchantId, inputElement) => {
       return;
     }
 
-    showError('封面已更新！', 2000);
+    showError('封面已更新', 2000);
     await loadMerchants();
     renderAdminMerchantDetail();
   } catch (err) {
@@ -1055,12 +1055,12 @@ window.updateMerchantCover = async (merchantId, inputElement) => {
 
 async function openAuthDialog() {
   if (!supabaseUrl || !supabaseAnonKey) {
-    showError('请先在 window.__SUPABASE_CONFIG__ 中配置 Supabase URL 和 anon key。');
+    showError('请先在 window.__SUPABASE_CONFIG__ 中配置 Supabase URL 和 anon key');
     return;
   }
   const client = await ensureSupabaseClient();
   if (!client) {
-    showError('Supabase SDK 加载失败，请检查网络或稍后重试。');
+    showError('Supabase SDK 加载失败，请检查网络或稍后重试');
     return;
   }
   els.authDialog.showModal();
@@ -1071,7 +1071,7 @@ window.openAuthDialog = openAuthDialog;
 
 function requireLogin(actionName) {
   if (!state.currentUser) {
-    showError(`${actionName} 需要先登录，系统将引导你进入学号登录。`);
+    showError(`${actionName} 请先登录`)
     openAuthDialog();
     return false;
   }
@@ -1102,13 +1102,13 @@ window.reportReview = async (reviewId) => {
 
   const client = await ensureSupabaseClient();
   if (!client) {
-    showError('Supabase SDK 加载失败，请检查网络或稍后重试。');
+    showError('Supabase SDK 加载失败，请检查网络或稍后重试')
     return;
   }
 
   const { data: { user } } = await client.auth.getUser();
   if (!user) {
-    showError('请先登录。');
+    showError('请先登录')
     return;
   }
 
@@ -1120,24 +1120,21 @@ window.reportReview = async (reviewId) => {
     .single();
 
   if (existingReport) {
-    showError('您已经举报过这条评价了。');
+    showError('您已经举报过这条评价了')
     return;
   }
 
-  const { error: reportError } = await client
-    .from('review_reports')
-    .insert({
+  const reportResult = await safeApiCall(
+    () => client.from('review_reports').insert({
       review_id: reviewId,
       reporter_user_id: user.id,
       reason_type: 'other',
-    });
+    }),
+    '举报失败'
+  );
+  if (!reportResult) return;
 
-  if (reportError) {
-    showError(`举报失败：${reportError.message}`);
-    return;
-  }
-
-  showError('举报成功！感谢您的反馈。', 2000);
+  showError('举报成功，感谢您的反馈', 2000);
   await loadMerchants();
   renderDetail();
 };
@@ -1146,19 +1143,19 @@ window.writeReview = async () => {
   if (!requireLogin('发布评价')) return;
 
   if (!state.selectedMerchantId) {
-    showError('请先选择一个商家。');
+    showError('请先选择一个商家')
     return;
   }
 
   const client = await ensureSupabaseClient();
   if (!client) {
-    showError('Supabase SDK 加载失败，请检查网络或稍后重试。');
+    showError('Supabase SDK 加载失败，请检查网络或稍后重试')
     return;
   }
 
   const { data: { user } } = await client.auth.getUser();
   if (!user) {
-    showError('请先登录。');
+    showError('请先登录')
     return;
   }
 
@@ -1309,17 +1306,13 @@ window.approveMerchant = async (merchantId) => {
       }
     }
 
-    const { error: deleteError } = await client
-      .from('merchants')
-      .delete()
-      .eq('id', merchantId);
+    const deleteResult = await safeApiCall(
+      () => client.from('merchants').delete().eq('id', merchantId),
+      '合并失败'
+    );
+    if (!deleteResult) return;
 
-    if (deleteError) {
-      showError(`合并失败：${deleteError.message}`);
-      return;
-    }
-
-    showError('商家已合并至已有商家！', 2000);
+    showError('商家已合并至已有商家', 2000);
     invalidateAdminDataCache();
     invalidatePlatformAverageCache();
     await loadMerchants();
@@ -1327,15 +1320,11 @@ window.approveMerchant = async (merchantId) => {
     return;
   }
 
-  const { error } = await client
-    .from('merchants')
-    .update({ status: 'approved' })
-    .eq('id', merchantId);
-
-  if (error) {
-    showError(`审核通过失败：${error.message}`);
-    return;
-  }
+  const approveResult = await safeApiCall(
+    () => client.from('merchants').update({ status: 'approved' }).eq('id', merchantId),
+    '审核通过失败'
+  );
+  if (!approveResult) return;
 
   if (merchant.description && merchant.description.trim() && merchant.created_by) {
     await client.from('reviews').insert({
@@ -1346,7 +1335,7 @@ window.approveMerchant = async (merchantId) => {
     });
   }
 
-  showError('商家已通过审核！', 2000);
+  showError('商家已通过审核', 2000);
   invalidateAdminDataCache();
   invalidatePlatformAverageCache();
   await loadMerchants();
@@ -1357,17 +1346,13 @@ window.rejectMerchant = async (merchantId) => {
   const client = await ensureSupabaseClient();
   if (!client) return;
 
-  const { error } = await client
-    .from('merchants')
-    .update({ status: 'rejected' })
-    .eq('id', merchantId);
+  const result = await safeApiCall(
+    () => client.from('merchants').update({ status: 'rejected' }).eq('id', merchantId),
+    '拒绝失败'
+  );
+  if (!result) return;
 
-  if (error) {
-    showError(`拒绝失败：${error.message}`);
-    return;
-  }
-
-  showError('商家已被拒绝。', 2000);
+  showError('商家已被拒绝', 2000);
   invalidateAdminDataCache();
   await renderAdminPendingMerchants();
 };
@@ -1376,17 +1361,13 @@ window.hideReview = async (reviewId) => {
   const client = await ensureSupabaseClient();
   if (!client) return;
 
-  const { error } = await client
-    .from('reviews')
-    .update({ status: 'hidden' })
-    .eq('id', reviewId);
+  const result = await safeApiCall(
+    () => client.from('reviews').update({ status: 'hidden' }).eq('id', reviewId),
+    '隐藏失败'
+  );
+  if (!result) return;
 
-  if (error) {
-    showError(`隐藏失败：${error.message}`);
-    return;
-  }
-
-  showError('评价已隐藏。', 2000);
+  showError('评价已隐藏', 2000);
   invalidateAdminDataCache();
   await loadMerchants();
   renderDetail();
@@ -1396,17 +1377,13 @@ window.dismissReports = async (reviewId) => {
   const client = await ensureSupabaseClient();
   if (!client) return;
 
-  const { error } = await client
-    .from('reviews')
-    .update({ report_count: 0 })
-    .eq('id', reviewId);
+  const result = await safeApiCall(
+    () => client.from('reviews').update({ report_count: 0 }).eq('id', reviewId),
+    '忽略举报失败'
+  );
+  if (!result) return;
 
-  if (error) {
-    showError(`忽略举报失败：${error.message}`);
-    return;
-  }
-
-  showError('已忽略举报，举报计数已重置。', 2000);
+  showError('已忽略举报，举报计数已重置', 2000);
   invalidateAdminDataCache();
   await renderAdminReportedReviews();
 };
@@ -1416,20 +1393,20 @@ window.uploadMerchantImage = async (merchantId, inputElement) => {
   if (!file) return;
 
   if (!file.type.startsWith('image/')) {
-    showError('请选择图片文件。');
+    showError('请选择图片文件')
     inputElement.value = '';
     return;
   }
 
   const client = await ensureSupabaseClient();
   if (!client) {
-    showError('Supabase SDK 加载失败。');
+    showError('Supabase SDK 加载失败')
     return;
   }
 
   const { data: { user } } = await client.auth.getUser();
   if (!user) {
-    showError('请先登录。');
+    showError('请先登录')
     return;
   }
 
@@ -1479,7 +1456,7 @@ window.uploadMerchantImage = async (merchantId, inputElement) => {
     }
 
     inputElement.value = '';
-    showError('照片上传成功！', 2000);
+    showError('照片上传成功', 2000);
     await loadMerchants();
     renderDetail();
   } catch (err) {
@@ -1492,13 +1469,13 @@ window.deleteMerchantImage = async (merchantId, imageUrl) => {
 
   const client = await ensureSupabaseClient();
   if (!client) {
-    showError('Supabase SDK 加载失败。');
+    showError('Supabase SDK 加载失败')
     return;
   }
 
   const { data: { user } } = await client.auth.getUser();
   if (!user) {
-    showError('请先登录。');
+    showError('请先登录')
     return;
   }
 
@@ -1525,14 +1502,14 @@ window.deleteMerchantImage = async (merchantId, imageUrl) => {
     console.warn('Storage file deletion skipped:', e);
   }
 
-  showError('照片已删除！', 2000);
+  showError('照片已删除', 2000);
   await loadMerchants();
   renderDetail();
 };
 
 window.openEditProfile = () => {
   if (!state.currentUser) {
-    showError('请先登录。');
+    showError('请先登录')
     return;
   }
   els.editNickname.value = state.currentUser.nickname || '';
@@ -1551,7 +1528,7 @@ window.logout = async () => {
   renderProfile();
   renderAdmin();
   setActiveView('food');
-  showError('已退出登录。', 2000);
+  showError('已退出登录', 2000);
 };
 window.openMerchantUpload = async () => {
   if (!requireLogin('上传商家')) return;
@@ -1620,6 +1597,7 @@ els.searchInput.addEventListener('input', (event) => {
 });
 
 els.foodTabButton.addEventListener('click', () => setActiveView('food'));
+els.marketTabButton.addEventListener('click', () => setActiveView('market'));
 els.profileTabButton.addEventListener('click', () => setActiveView('profile'));
 
 els.confirmLogin.addEventListener('click', async (event) => {
@@ -1631,12 +1609,12 @@ els.confirmLogin.addEventListener('click', async (event) => {
     return;
   }
   if (!password) {
-    showError('请输入密码。');
+    showError('请输入密码')
     return;
   }
   const client = await ensureSupabaseClient();
   if (!client) {
-    showError('Supabase SDK 加载失败，请检查网络或稍后重试。');
+    showError('Supabase SDK 加载失败，请检查网络或稍后重试')
     return;
   }
 
@@ -1645,6 +1623,39 @@ els.confirmLogin.addEventListener('click', async (event) => {
 
   if (error) {
     if (error.message.includes('Invalid login credentials') || error.message.includes('user not found')) {
+      if (password === studentId) {
+        const { data, error: signUpError } = await client.auth.signUp({ email, password });
+        if (signUpError) {
+          showError(`自动注册失败：${signUpError.message}`);
+          return;
+        }
+        const authUser = data.user;
+        if (!authUser) {
+          showError('自动注册失败：未返回用户信息')
+          return;
+        }
+        if (!data.session) {
+          showError('自动注册成功，但当前未建立登录会话。请在 Supabase Auth 设置中关闭 Confirm email 后重试')
+          return;
+        }
+        const profileResult = await safeApiCall(
+          () => client.from('users').insert({
+            id: authUser.id,
+            student_id: studentId,
+            nickname: studentId,
+            role: studentId === '20233897' ? 'super_admin' : 'user',
+          }),
+          '自动注册成功，但写入资料失败'
+        );
+        if (!profileResult) return;
+
+        els.authDialog.close();
+        els.passwordInput.value = '';
+        showError('首次登录，建议尽快修改密码和昵称', 4000);
+        await loadCurrentUser();
+        setActiveView(state.activeView === 'admin' ? 'profile' : state.activeView);
+        return;
+      }
       showError('请先注册');
       els.authDialog.close();
       els.passwordInput.value = '';
@@ -1684,7 +1695,7 @@ els.uploadMerchantCoverPage.addEventListener('change', async (event) => {
   }
 
   if (!file.type.startsWith('image/')) {
-    showError('请选择图片文件。');
+    showError('请选择图片文件')
     event.target.value = '';
     state.uploadedImageUrlPage = null;
     return;
@@ -1702,14 +1713,14 @@ els.uploadMerchantCoverPage.addEventListener('change', async (event) => {
     
     const client = await ensureSupabaseClient();
     if (!client) {
-      showError('Supabase SDK 加载失败。');
+      showError('Supabase SDK 加载失败')
       state.uploadedImageUrlPage = null;
       return;
     }
 
     const { data: { user } } = await client.auth.getUser();
     if (!user) {
-      showError('请先登录。');
+      showError('请先登录')
       state.uploadedImageUrlPage = null;
       return;
     }
@@ -1745,20 +1756,20 @@ document.addEventListener('change', async (event) => {
   if (!file) return;
 
   if (!file.type.startsWith('image/')) {
-    showError('请选择图片文件。');
+    showError('请选择图片文件')
     event.target.value = '';
     return;
   }
 
   const client = await ensureSupabaseClient();
   if (!client) {
-    showError('Supabase SDK 加载失败。');
+    showError('Supabase SDK 加载失败')
     return;
   }
 
   const { data: { user } } = await client.auth.getUser();
   if (!user) {
-    showError('请先登录。');
+    showError('请先登录')
     return;
   }
 
@@ -1799,7 +1810,7 @@ document.addEventListener('change', async (event) => {
     if (avatarImg) {
       avatarImg.src = avatarUrl;
     }
-    showError('头像更新成功！', 2000);
+    showError('头像更新成功', 2000);
     await loadMerchants();
     renderDetail();
   } catch (err) {
@@ -1825,11 +1836,11 @@ els.confirmRegister.addEventListener('click', async (event) => {
   const password = els.registerPasswordInput.value.trim();
 
   if (!nickname) {
-    showError('请输入昵称。');
+    showError('请输入昵称')
     return;
   }
   if (nickname.length > 20) {
-    showError('昵称不能超过20个字符。');
+    showError('昵称不能超过20个字符')
     return;
   }
   if (!studentIdValid(studentId)) {
@@ -1837,12 +1848,12 @@ els.confirmRegister.addEventListener('click', async (event) => {
     return;
   }
   if (!password) {
-    showError('请输入密码。');
+    showError('请输入密码')
     return;
   }
   const client = await ensureSupabaseClient();
   if (!client) {
-    showError('Supabase SDK 加载失败，请检查网络或稍后重试。');
+    showError('Supabase SDK 加载失败，请检查网络或稍后重试')
     return;
   }
 
@@ -1859,25 +1870,24 @@ els.confirmRegister.addEventListener('click', async (event) => {
 
   const authUser = data.user;
   if (!authUser) {
-    showError('注册失败：未返回用户信息。');
+    showError('注册失败：未返回用户信息')
     return;
   }
   if (!data.session) {
-    showError('注册成功，但当前未建立登录会话。请在 Supabase Auth 设置中关闭 Confirm email 后重试。');
+    showError('注册成功，但当前未建立登录会话。请在 Supabase Auth 设置中关闭 Confirm email 后重试')
     return;
   }
 
-  const { error: profileError } = await client.from('users').insert({
-    id: authUser.id,
-    student_id: studentId,
-    nickname,
-    role: studentId === '20233897' ? 'super_admin' : 'user',
-  });
-
-  if (profileError) {
-    showError(`注册成功，但写入资料失败：${profileError.message}`);
-    return;
-  }
+  const profileResult = await safeApiCall(
+    () => client.from('users').insert({
+      id: authUser.id,
+      student_id: studentId,
+      nickname,
+      role: studentId === '20233897' ? 'super_admin' : 'user',
+    }),
+    '注册成功，但写入资料失败'
+  );
+  if (!profileResult) return;
 
   els.registerDialog.close();
   els.registerNicknameInput.value = '';
@@ -1897,15 +1907,15 @@ els.confirmMerchantUploadPage.addEventListener('click', async (event) => {
   const description = els.uploadMerchantDescPage.value.trim();
 
   if (!name) {
-    showError('请输入商家名称。');
+    showError('请输入商家名称')
     return;
   }
   if (name.length > 20) {
-    showError('商家名称不能超过20个字符。');
+    showError('商家名称不能超过20个字符')
     return;
   }
   if (!location || !VALID_LOCATIONS.includes(location)) {
-    showError('请选择有效的位置。');
+    showError('请选择有效的位置')
     return;
   }
 
@@ -1913,7 +1923,7 @@ els.confirmMerchantUploadPage.addEventListener('click', async (event) => {
     m => m.name === name && m.location === location
   );
   if (existingMerchant) {
-    showError('该商家已存在。');
+    showError('该商家已存在')
     return;
   }
 
@@ -1923,7 +1933,7 @@ els.confirmMerchantUploadPage.addEventListener('click', async (event) => {
 
   const client = await ensureSupabaseClient();
   if (!client) {
-    showError('Supabase SDK 加载失败，请检查网络或稍后重试。');
+    showError('Supabase SDK 加载失败，请检查网络或稍后重试')
     els.confirmMerchantUploadPage.disabled = false;
     els.confirmMerchantUploadPage.textContent = '提交';
     hideLoading();
@@ -1932,37 +1942,35 @@ els.confirmMerchantUploadPage.addEventListener('click', async (event) => {
 
   const { data: { user } } = await client.auth.getUser();
   if (!user) {
-    showError('请先登录。');
+    showError('请先登录')
     els.confirmMerchantUploadPage.disabled = false;
     els.confirmMerchantUploadPage.textContent = '提交';
     hideLoading();
     return;
   }
 
-  const { error } = await client.from('merchants').insert({
-    name,
-    location,
-    cover_image_url: state.uploadedImageUrlPage || null,
-    description: description || null,
-    created_by: user.id,
-    status: 'pending',
-  });
-
-  if (error) {
-    showError(`提交失败：${error.message}`);
-    els.confirmMerchantUploadPage.disabled = false;
-    els.confirmMerchantUploadPage.textContent = '提交';
-    hideLoading();
-    return;
-  }
+  const result = await safeApiCall(
+    () => client.from('merchants').insert({
+      name,
+      location,
+      cover_image_url: state.uploadedImageUrlPage || null,
+      description: description || null,
+      created_by: user.id,
+      status: 'pending',
+    }),
+    '提交失败'
+  );
 
   els.confirmMerchantUploadPage.disabled = false;
   els.confirmMerchantUploadPage.textContent = '提交';
+  hideLoading();
+
+  if (!result) return;
+
   els.uploadMerchantCoverPage.value = '';
   els.uploadMerchantPreviewPage.innerHTML = '';
   state.uploadedImageUrlPage = null;
-  hideLoading();
-  showError('商家提交成功！等待管理员审核后即可显示。', 3000);
+  showError('商家提交成功，等待管理员审核后即可显示', 3000);
   setActiveView('food');
 });
 
@@ -1972,50 +1980,50 @@ els.confirmReview.addEventListener('click', async (event) => {
   const content = els.reviewContent.value.trim();
 
   if (!state.selectedMerchantId) {
-    showError('请先选择一个商家。');
+    showError('请先选择一个商家')
     return;
   }
 
   const client = await ensureSupabaseClient();
   if (!client) {
-    showError('Supabase SDK 加载失败，请检查网络或稍后重试。');
+    showError('Supabase SDK 加载失败，请检查网络或稍后重试')
     return;
   }
 
   const { data: { user } } = await client.auth.getUser();
   if (!user) {
-    showError('请先登录。');
+    showError('请先登录')
     return;
   }
 
-  let error;
+  let result;
   if (state.editingReviewId) {
-    const result = await client
-      .from('reviews')
-      .update({ rating, content, updated_at: new Date().toISOString() })
-      .eq('id', state.editingReviewId);
-    error = result.error;
+    result = await safeApiCall(
+      () => client.from('reviews')
+        .update({ rating, content, updated_at: new Date().toISOString() })
+        .eq('id', state.editingReviewId),
+      '提交失败'
+    );
   } else {
-    const result = await client.from('reviews').insert({
-      merchant_id: state.selectedMerchantId,
-      user_id: user.id,
-      rating,
-      content,
-      status: 'visible',
-      report_count: 0,
-    });
-    error = result.error;
+    result = await safeApiCall(
+      () => client.from('reviews').insert({
+        merchant_id: state.selectedMerchantId,
+        user_id: user.id,
+        rating,
+        content,
+        status: 'visible',
+        report_count: 0,
+      }),
+      '提交失败'
+    );
   }
 
-  if (error) {
-    showError(`提交失败：${error.message}`);
-    return;
-  }
+  if (!result) return;
 
   els.reviewDialog.close();
   els.reviewContent.value = '';
   state.editingReviewId = null;
-  showError('评价提交成功！', 2000);
+  showError('评价提交成功', 2000);
   await loadMerchants();
   renderDetail();
 });
@@ -2029,43 +2037,43 @@ els.confirmEditProfile.addEventListener('click', async (event) => {
   const confirmPwd = els.confirmNewPassword.value;
 
   if (!newNickname && !currentPwd && !newPwd) {
-    showError('请至少修改一项内容。');
+    showError('请至少修改一项内容')
     return;
   }
 
   if (newNickname && newNickname.length > 20) {
-    showError('昵称不能超过20个字符。');
+    showError('昵称不能超过20个字符')
     return;
   }
 
   if (newPwd || confirmPwd || currentPwd) {
     if (!currentPwd) {
-      showError('请输入当前密码。');
+      showError('请输入当前密码')
       return;
     }
     if (!newPwd) {
-      showError('请输入新密码。');
+      showError('请输入新密码')
       return;
     }
     if (newPwd !== confirmPwd) {
-      showError('两次输入的新密码不一致。');
+      showError('两次输入的新密码不一致')
       return;
     }
     if (newPwd.length < 6) {
-      showError('新密码至少6个字符。');
+      showError('新密码至少6个字符')
       return;
     }
   }
 
   const client = await ensureSupabaseClient();
   if (!client) {
-    showError('Supabase SDK 加载失败。');
+    showError('Supabase SDK 加载失败')
     return;
   }
 
   const { data: { user } } = await client.auth.getUser();
   if (!user) {
-    showError('请先登录。');
+    showError('请先登录')
     return;
   }
 
@@ -2077,7 +2085,7 @@ els.confirmEditProfile.addEventListener('click', async (event) => {
     });
 
     if (signInError) {
-      showError('当前密码错误。');
+      showError('当前密码错误')
       return;
     }
 
@@ -2092,21 +2100,17 @@ els.confirmEditProfile.addEventListener('click', async (event) => {
   }
 
   if (newNickname && newNickname !== state.currentUser.nickname) {
-    const { error: nicknameError } = await client
-      .from('users')
-      .update({ nickname: newNickname })
-      .eq('id', user.id);
-
-    if (nicknameError) {
-      showError(`昵称修改失败：${nicknameError.message}`);
-      return;
-    }
+    const nicknameResult = await safeApiCall(
+      () => client.from('users').update({ nickname: newNickname }).eq('id', user.id),
+      '昵称修改失败'
+    );
+    if (!nicknameResult) return;
 
     state.currentUser.nickname = newNickname;
   }
 
   els.editProfileDialog.close();
-  showError('个人资料已更新！', 2000);
+  showError('个人资料已更新', 2000);
   await loadCurrentUser();
 });
 
