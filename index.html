@@ -66,14 +66,13 @@
         </section>
 
         <section id="marketView" class="view-panel panel-stack is-hidden" data-view="market">
-          <article class="card">
-            <div class="section-heading">
-              <h2>青春市集</h2>
-            </div>
-            <div id="marketPanel" class="panel-stack">
-              <p class="empty-state">内容建设中，敬请期待...</p>
-            </div>
-          </article>
+          <div id="marketPanel" class="market-canvas">
+            <svg id="marketSvg" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg"
+                 class="market-svg" style="touch-action: none;">
+              <rect x="10" y="10" width="180" height="180" fill="white"
+                    stroke="#e5e7eb" stroke-width="2" rx="8" />
+            </svg>
+          </div>
         </section>
 
         <section id="profileView" class="view-panel panel-stack is-hidden" data-view="profile">
@@ -242,6 +241,6 @@
       </div>
     </dialog>
 
-    <script src="app.js"></script>
+    <script type="module" src="app.js"></script>
   </body>
 </html>
