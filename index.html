@@ -115,7 +115,7 @@
                 <textarea id="uploadMerchantDescPage" rows="3" placeholder="简单描述这家商家..."></textarea>
               </label>
               <div class="dialog-buttons">
-                <button type="button" class="outline" onclick="cancelMerchantUploadPage()">取消</button>
+                <button type="button" class="outline" data-action="cancelMerchantUploadPage">取消</button>
                 <button type="button" id="confirmMerchantUploadPage" class="primary">提交</button>
               </div>
             </form>
@@ -237,7 +237,7 @@
     </dialog>
 
     <dialog id="imageViewerDialog">
-      <div class="image-viewer-backdrop" onclick="closeImageViewer()">
+      <div class="image-viewer-backdrop" data-action="closeImageViewer">
         <img id="imageViewerImage" src="" alt="大图预览" onclick="event.stopPropagation()" />
       </div>
     </dialog>
