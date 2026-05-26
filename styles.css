@@ -424,7 +424,7 @@ input, select, textarea {
   position: absolute;
   top: 8px;
   left: 8px;
-  width: calc(50% - 8px);
+  width: calc(33.333% - 5.33px);
   height: calc(100% - 16px);
   background: white;
   border-radius: 999px;
@@ -432,8 +432,11 @@ input, select, textarea {
   z-index: 0;
   will-change: transform;
 }
-.nav-slider.right {
-  transform: translateX(calc(100%));
+.nav-slider.pos-1 {
+  transform: translateX(100%);
+}
+.nav-slider.pos-2 {
+  transform: translateX(200%);
 }
 .nav-tab {
   flex: 1;
