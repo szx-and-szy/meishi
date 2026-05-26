@@ -15,6 +15,12 @@ async function init() {
   await loadCurrentUser();
   await loadMerchants();
   renderDetail();
+
+  const splash = document.getElementById('splashScreen');
+  if (splash) {
+    splash.classList.add('fade-out');
+    splash.addEventListener('transitionend', () => splash.remove());
+  }
 }
 
 init();
