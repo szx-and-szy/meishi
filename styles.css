@@ -585,6 +585,38 @@ menu {
   min-height: 60vh;
   overflow: hidden;
 }
+.market-zoom-controls {
+  position: fixed;
+  bottom: 96px;
+  right: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  z-index: 10;
+}
+.market-zoom-btn {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  font-size: 22px;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  transition: background 0.15s, transform 0.1s;
+  padding: 0;
+}
+.market-zoom-btn:hover {
+  background: var(--primary-light);
+}
+.market-zoom-btn:active {
+  transform: scale(0.92);
+}
 .market-svg {
   width: 80vw;
   max-width: 360px;
