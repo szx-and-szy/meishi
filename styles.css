@@ -99,10 +99,6 @@ button, input, select, textarea {
   flex-direction: column;
   align-items: stretch;
 }
-.location-picker {
-  display: grid;
-  gap: 8px;
-}
 .filter-bar {
   display: flex;
   gap: 12px;
@@ -115,14 +111,6 @@ button, input, select, textarea {
 }
 .filter-item select {
   flex: 1;
-}
-.eyebrow {
-  margin: 0 0 4px;
-  color: #c2410c;
-  font-size: 12px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: .08em;
 }
 h1, h2, h3, p { margin: 0; }
 .content {
@@ -156,7 +144,7 @@ h1, h2, h3, p { margin: 0; }
 .search-box input:focus {
   border-color: var(--primary);
 }
-.primary, .secondary, .outline, .chip {
+.primary, .secondary, .outline {
   border-radius: 999px;
   padding: 10px 16px;
   cursor: pointer;
@@ -164,7 +152,6 @@ h1, h2, h3, p { margin: 0; }
 .primary { background: var(--primary); color: white; border: none; }
 .secondary { background: #fed7aa; color: #c2410c; border: none; }
 .outline { background: transparent; color: var(--text); border: 1px solid var(--border); }
-.filters { display: grid; gap: 12px; }
 input, select, textarea {
   width: 100%;
   border: 1px solid var(--border);
@@ -172,16 +159,9 @@ input, select, textarea {
   padding: 12px 14px;
   background: #fbfcff;
 }
-.stats-grid, .merchant-list, .review-list, .photo-strip {
+.merchant-list, .review-list, .photo-strip {
   display: grid;
   gap: 12px;
-}
-.stats-grid { grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); }
-.stat {
-  border: 1px solid var(--border);
-  border-radius: 16px;
-  padding: 12px;
-  background: linear-gradient(180deg, #ffffff, #f7faff);
 }
 .merchant-card {
   display: grid;
@@ -270,20 +250,14 @@ input, select, textarea {
   aspect-ratio: 1;
   object-fit: cover;
   border-radius: 14px;
+  cursor: pointer;
+  transition: transform 0.2s;
 }
-.photo-strip-admin {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(96px, 1fr));
-  gap: 8px;
+.photo-strip img:hover {
+  transform: scale(1.05);
 }
 .photo-item {
   position: relative;
-}
-.photo-item img {
-  width: 100%;
-  aspect-ratio: 1;
-  object-fit: cover;
-  border-radius: 14px;
 }
 .photo-delete-btn {
   position: absolute;
@@ -502,12 +476,14 @@ menu {
   margin: 0;
 }
 .dialog-buttons {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
+  display: flex;
+  justify-content: space-between;
   gap: 12px;
+  padding: 0;
+  margin: 0;
 }
 .dialog-buttons button {
-  width: 100%;
+  flex: 1;
 }
 .auth-buttons {
   display: grid;
@@ -530,16 +506,6 @@ menu {
 .login-btn {
   min-width: 140px;
 }
-.dialog-buttons {
-  display: flex;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 0;
-  margin: 0;
-}
-.dialog-buttons button {
-  flex: 1;
-}
 .rating-selector {
   display: flex;
   gap: 8px;
@@ -556,9 +522,6 @@ menu {
 }
 .rating-star-filled {
   color: #f59e0b !important;
-}
-.rating-star-empty {
-  color: #d1d5db;
 }
 .image-viewer-backdrop {
   position: relative;
@@ -601,13 +564,6 @@ menu {
 }
 .detail-cover:hover {
   transform: scale(1.02);
-}
-.photo-strip img {
-  cursor: pointer;
-  transition: transform 0.2s;
-}
-.photo-strip img:hover {
-  transform: scale(1.05);
 }
 .upload-merchant-form {
   max-width: 500px;
