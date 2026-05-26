@@ -1,0 +1,247 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes" />
+    <title>安财美食地图</title>
+    <link rel="stylesheet" href="styles.css" />
+    <script>
+      window.__SUPABASE_CONFIG__ = window.__SUPABASE_CONFIG__ || {
+        url: "https://kbhsdyswxiqqswdxmcdh.supabase.co",
+        anonKey: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtiaHNkeXN3eGlxcXN3ZHhtY2RoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQxOTAyMzMsImV4cCI6MjA4OTc2NjIzM30.auJ4YrEz4h0B74Zq9ccHwpNcY92Pi75ycrsIfbfBhtM",
+        emailDomain: "meishi.local",
+      };
+    </script>
+  </head>
+  <body>
+    <div id="splashScreen" class="splash-screen">
+      <div class="splash-logo">
+        <div class="splash-icon">
+          <svg viewBox="0 0 100 100" class="splash-svg">
+            <defs>
+              <linearGradient id="markerGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" style="stop-color:#f97316" />
+                <stop offset="100%" style="stop-color:#ea580c" />
+              </linearGradient>
+            </defs>
+            <path d="M50 8 C30 8 15 23 15 43 C15 68 50 92 50 92 C50 92 85 68 85 43 C85 23 70 8 50 8 Z" fill="url(#markerGradient)" class="marker-body" />
+            <circle cx="50" cy="38" r="18" fill="white" opacity="0.95" />
+            <text x="50" y="45" text-anchor="middle" font-size="22">🍜</text>
+          </svg>
+        </div>
+        <div class="splash-text">安财美食地图</div>
+      </div>
+    </div>
+    <div class="app-shell">
+      <header id="topbar" class="topbar card">
+        <input id="searchInput" type="search" placeholder="搜索商家名称" maxlength="20" />
+        <div class="filter-bar">
+          <label class="filter-item">
+            <span>位置</span>
+            <select id="locationSelect"></select>
+          </label>
+          <label class="filter-item">
+            <span>评分</span>
+            <select id="ratingSortSelect"></select>
+          </label>
+        </div>
+      </header>
+
+      <main class="content">
+        <section id="foodView" class="view-panel panel-stack" data-view="food">
+          <section>
+            <div id="merchantList" class="merchant-list"></div>
+          </section>
+        </section>
+
+        <section id="detailView" class="view-panel panel-stack is-hidden" data-view="detail">
+          <section class="card detail-panel">
+            <div class="section-heading">
+              <h2>商家详情</h2>
+            </div>
+            <div id="merchantDetail" class="merchant-detail empty-state">
+              请选择一家商家查看详情。
+            </div>
+          </section>
+        </section>
+
+        <section id="marketView" class="view-panel panel-stack is-hidden" data-view="market">
+          <article class="card">
+            <div class="section-heading">
+              <h2>青春市集</h2>
+            </div>
+            <div id="marketPanel" class="panel-stack">
+              <p class="empty-state">内容建设中，敬请期待...</p>
+            </div>
+          </article>
+        </section>
+
+        <section id="profileView" class="view-panel panel-stack is-hidden" data-view="profile">
+          <article class="card">
+            <div id="profilePanel" class="panel-stack"></div>
+          </article>
+        </section>
+
+        <section id="adminView" class="view-panel panel-stack is-hidden" data-view="admin">
+          <article class="card">
+            <div class="section-heading">
+              <h2>管理员工作台</h2>
+            </div>
+            <div id="adminPanel" class="panel-stack"></div>
+          </article>
+        </section>
+
+        <section id="uploadMerchantView" class="view-panel panel-stack is-hidden" data-view="uploadMerchant">
+          <article class="card">
+            <div class="section-heading">
+              <h2>上传商家</h2>
+            </div>
+            <form class="dialog-form upload-merchant-form">
+              <label>
+                商家名称
+                <input id="uploadMerchantNamePage" type="text" maxlength="20" placeholder="请尽量输入有标识性的全名" />
+              </label>
+              <label>
+                位置
+                <select id="uploadMerchantLocationPage"></select>
+              </label>
+              <label>
+                商家照片（可选）
+                <input id="uploadMerchantCoverPage" type="file" accept="image/*" />
+              </label>
+              <div id="uploadMerchantPreviewPage" class="image-preview"></div>
+              <label>
+                描述（可选）
+                <textarea id="uploadMerchantDescPage" rows="3" placeholder="简单描述这家商家..."></textarea>
+              </label>
+              <div class="dialog-buttons">
+                <button type="button" class="outline" data-action="cancelMerchantUploadPage">取消</button>
+                <button type="button" id="confirmMerchantUploadPage" class="primary">提交</button>
+              </div>
+            </form>
+          </article>
+        </section>
+      </main>
+
+      <nav class="bottom-nav">
+        <div class="nav-slider" id="navSlider"></div>
+        <button id="foodTabButton" class="nav-tab active" data-target="food">美食</button>
+        <button id="marketTabButton" class="nav-tab" data-target="market">青春市集</button>
+        <button id="profileTabButton" class="nav-tab" data-target="profile">个人中心</button>
+      </nav>
+    </div>
+
+    <dialog id="authDialog">
+      <form method="dialog" class="dialog-form">
+        <div class="dialog-header">
+          <h3>学号登录</h3>
+          <button id="openRegisterButton" type="button" class="secondary">注册</button>
+        </div>
+        <label>
+          学号
+          <input id="studentIdInput" type="text" inputmode="numeric" placeholder="请输入学号" />
+        </label>
+        <label>
+          密码
+          <input id="passwordInput" type="password" placeholder="请输入密码" />
+        </label>
+        <menu class="auth-buttons">
+          <button id="forgotPasswordButton" type="button" class="link-button">忘记密码</button>
+          <button id="confirmLogin" value="default" class="primary login-btn">登录</button>
+        </menu>
+      </form>
+    </dialog>
+
+    <dialog id="registerDialog">
+      <form method="dialog" class="dialog-form">
+        <h3>注册</h3>
+        <label>
+          昵称
+          <input id="registerNicknameInput" type="text" maxlength="20" placeholder="请输入昵称" />
+        </label>
+        <label>
+          学号
+          <input id="registerStudentIdInput" type="text" inputmode="numeric" placeholder="请输入学号" />
+        </label>
+        <label>
+          密码
+          <input id="registerPasswordInput" type="password" placeholder="请输入密码" />
+        </label>
+        <menu class="dialog-buttons">
+          <button value="cancel" class="outline">取消</button>
+          <button id="confirmRegister" value="default" class="primary">注册</button>
+        </menu>
+      </form>
+    </dialog>
+
+    <dialog id="forgotPasswordDialog">
+      <form method="dialog" class="dialog-form">
+        <h3>忘记密码</h3>
+        <p>请联系管理员QQ：安财经济学院融媒体中心3425749029</p>
+        <menu>
+          <button value="default" class="primary">知道了</button>
+        </menu>
+      </form>
+    </dialog>
+
+    <dialog id="reviewDialog">
+      <form method="dialog" class="dialog-form">
+        <h3>发布评价</h3>
+        <label>
+          评分
+          <div class="rating-selector" id="ratingSelector">
+            <span class="rating-star-empty" data-value="1"></span>
+            <span class="rating-star-empty" data-value="2"></span>
+            <span class="rating-star-empty" data-value="3"></span>
+            <span class="rating-star-empty" data-value="4"></span>
+            <span class="rating-star-empty" data-value="5"></span>
+          </div>
+          <input type="hidden" id="reviewRating" value="5" />
+        </label>
+        <label>
+          评价内容（可选）
+          <textarea id="reviewContent" rows="4" maxlength="500" placeholder="分享你的用餐体验..."></textarea>
+        </label>
+        <menu class="dialog-buttons">
+          <button value="cancel" class="outline">取消</button>
+          <button id="confirmReview" value="default" class="primary">提交</button>
+        </menu>
+      </form>
+    </dialog>
+
+    <dialog id="editProfileDialog">
+      <form method="dialog" class="dialog-form">
+        <h3>编辑个人资料</h3>
+        <label>
+          新昵称
+          <input id="editNickname" type="text" maxlength="20" placeholder="请输入新昵称" />
+        </label>
+        <hr />
+        <label>
+          当前密码
+          <input id="currentPassword" type="password" placeholder="请输入当前密码" />
+        </label>
+        <label>
+          新密码
+          <input id="newPassword" type="password" placeholder="请输入新密码" />
+        </label>
+        <label>
+          确认新密码
+          <input id="confirmNewPassword" type="password" placeholder="请再次输入新密码" />
+        </label>
+        <menu class="dialog-buttons">
+          <button value="cancel" class="outline">取消</button>
+          <button id="confirmEditProfile" value="default" class="primary">保存</button>
+        </menu>
+      </form>
+    </dialog>
+
+    <dialog id="imageViewerDialog">
+      <div class="image-viewer-backdrop" data-action="closeImageViewer">
+        <img id="imageViewerImage" src="" alt="大图预览" onclick="event.stopPropagation()" />
+      </div>
+    </dialog>
+
+    <script src="app.js"></script>
+  </body>
+</html>
