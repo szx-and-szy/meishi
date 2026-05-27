@@ -139,38 +139,11 @@ export function setupEventDelegation() {
     if (!svg) return;
 
     let scale = 1;
-    let lastDist = 0;
-
-    function getDistance(t1, t2) {
-      const dx = t1.clientX - t2.clientX;
-      const dy = t1.clientY - t2.clientY;
-      return Math.hypot(dx, dy);
-    }
 
     function applyScale(newScale) {
       scale = Math.min(5, newScale);
       svg.style.transform = `scale(${scale})`;
     }
-
-    svg.addEventListener('touchstart', (e) => {
-      if (e.touches.length === 2) {
-        lastDist = getDistance(e.touches[0], e.touches[1]);
-      }
-    }, { passive: true });
-
-    svg.addEventListener('touchmove', (e) => {
-      if (e.touches.length === 2) {
-        e.preventDefault();
-        const dist = getDistance(e.touches[0], e.touches[1]);
-        const delta = dist / lastDist;
-        applyScale(scale * delta);
-        lastDist = dist;
-      }
-    }, { passive: false });
-
-    svg.addEventListener('touchend', () => {
-      lastDist = 0;
-    });
 
     const zoomInBtn = document.getElementById('marketZoomIn');
     const zoomOutBtn = document.getElementById('marketZoomOut');
