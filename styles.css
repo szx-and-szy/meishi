@@ -621,9 +621,9 @@ menu {
   width: 80vw;
   max-width: 360px;
   height: auto;
-  transition: transform 0.05s linear;
-  transform-origin: center center;
+  transform-origin: 0 0;
   will-change: transform;
+  touch-action: none;
 }
 @media (min-width: 720px) {
   .merchant-list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
