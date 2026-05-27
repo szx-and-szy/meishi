@@ -136,22 +136,142 @@ export function setupEventDelegation() {
 
   function initMarketPinchZoom() {
     const svg = document.getElementById('marketSvg');
-    if (!svg) return;
+    const panel = document.getElementById('marketPanel');
+    if (!svg || !panel) return;
+
+    const MIN_SCALE = 0.5;
+    const MAX_SCALE = 5;
+    const ZOOM_STEP = 1.25;
 
     let scale = 1;
+    let translateX = 0;
+    let translateY = 0;
 
-    function applyScale(newScale) {
-      scale = Math.min(5, newScale);
-      svg.style.transform = `scale(${scale})`;
+    let initialDistance = 0;
+    let initialScale = 1;
+    let initialCenterX = 0;
+    let initialCenterY = 0;
+    let initialTranslateX = 0;
+    let initialTranslateY = 0;
+
+    let isDragging = false;
+    let dragStartX = 0;
+    let dragStartY = 0;
+
+    function applyTransform(smooth) {
+      if (smooth) {
+        svg.style.transition = 'transform 0.15s ease-out';
+      } else {
+        svg.style.transition = 'none';
+      }
+      svg.style.transform = `translate(${translateX}px, ${translateY}px) scale(${scale})`;
     }
+
+    function getDistance(touches) {
+      const dx = touches[0].clientX - touches[1].clientX;
+      const dy = touches[0].clientY - touches[1].clientY;
+      return Math.sqrt(dx * dx + dy * dy);
+    }
+
+    function getCenter(touches) {
+      return {
+        x: (touches[0].clientX + touches[1].clientX) / 2,
+        y: (touches[0].clientY + touches[1].clientY) / 2,
+      };
+    }
+
+    panel.addEventListener('touchstart', (e) => {
+      if (e.touches.length >= 2) e.preventDefault();
+    }, { passive: false });
+
+    panel.addEventListener('touchmove', (e) => {
+      if (e.touches.length >= 2) e.preventDefault();
+    }, { passive: false });
+
+    svg.addEventListener('touchstart', (e) => {
+      if (e.touches.length === 2) {
+        initialDistance = getDistance(e.touches);
+        initialScale = scale;
+        const center = getCenter(e.touches);
+        initialCenterX = center.x;
+        initialCenterY = center.y;
+        initialTranslateX = translateX;
+        initialTranslateY = translateY;
+        isDragging = false;
+      } else if (e.touches.length === 1) {
+        isDragging = true;
+        dragStartX = e.touches[0].clientX;
+        dragStartY = e.touches[0].clientY;
+        initialTranslateX = translateX;
+        initialTranslateY = translateY;
+      }
+    }, { passive: false });
+
+    svg.addEventListener('touchmove', (e) => {
+      if (e.touches.length === 2) {
+        e.preventDefault();
+        const currentDistance = getDistance(e.touches);
+        const newScale = Math.min(MAX_SCALE, Math.max(MIN_SCALE, initialScale * (currentDistance / initialDistance)));
+        const center = getCenter(e.touches);
+        const scaleRatio = newScale / initialScale;
+        translateX = scaleRatio * initialTranslateX + (1 - scaleRatio) * initialCenterX + (center.x - initialCenterX);
+        translateY = scaleRatio * initialTranslateY + (1 - scaleRatio) * initialCenterY + (center.y - initialCenterY);
+        scale = newScale;
+        applyTransform(false);
+      } else if (e.touches.length === 1 && isDragging) {
+        const deltaX = e.touches[0].clientX - dragStartX;
+        const deltaY = e.touches[0].clientY - dragStartY;
+        translateX = initialTranslateX + deltaX;
+        translateY = initialTranslateY + deltaY;
+        applyTransform(false);
+      }
+    }, { passive: false });
+
+    svg.addEventListener('touchend', () => {
+      isDragging = false;
+    });
+
+    svg.addEventListener('wheel', (e) => {
+      e.preventDefault();
+      const factor = e.deltaY > 0 ? 0.9 : 1.1;
+      const newScale = Math.min(MAX_SCALE, Math.max(MIN_SCALE, scale * factor));
+      const rect = svg.getBoundingClientRect();
+      const mouseX = e.clientX - rect.left;
+      const mouseY = e.clientY - rect.top;
+      const scaleRatio = newScale / scale;
+      translateX = mouseX - scaleRatio * (mouseX - translateX);
+      translateY = mouseY - scaleRatio * (mouseY - translateY);
+      scale = newScale;
+      applyTransform(false);
+    }, { passive: false });
 
     const zoomInBtn = document.getElementById('marketZoomIn');
     const zoomOutBtn = document.getElementById('marketZoomOut');
     if (zoomInBtn) {
-      zoomInBtn.addEventListener('click', () => applyScale(scale * 1.25));
+      zoomInBtn.addEventListener('click', () => {
+        const newScale = Math.min(MAX_SCALE, scale * ZOOM_STEP);
+        const scaleRatio = newScale / scale;
+        const rect = svg.getBoundingClientRect();
+        const cx = rect.width / 2;
+        const cy = rect.height / 2;
+        translateX = cx - scaleRatio * (cx - translateX);
+        translateY = cy - scaleRatio * (cy - translateY);
+        scale = newScale;
+        applyTransform(true);
+      });
     }
     if (zoomOutBtn) {
-      zoomOutBtn.addEventListener('click', () => applyScale(scale / 1.25));
+      zoomOutBtn.addEventListener('click', () => {
+        const newScale = Math.max(MIN_SCALE, scale / ZOOM_STEP);
+        const scaleRatio = newScale / scale;
+        const rect = svg.getBoundingClientRect();
+        const cx = rect.width / 2;
+        const cy = rect.height / 2;
+        translateX = cx - scaleRatio * (cx - translateX);
+        translateY = cy - scaleRatio * (cy - translateY);
+        scale = newScale;
+        applyTransform(true);
+      });
     }
   }
 
