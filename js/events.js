@@ -181,11 +181,11 @@ export function setupEventDelegation() {
     }
 
     panel.addEventListener('touchstart', (e) => {
-      if (e.touches.length >= 2) e.preventDefault();
+      e.preventDefault();
     }, { passive: false });
 
     panel.addEventListener('touchmove', (e) => {
-      if (e.touches.length >= 2) e.preventDefault();
+      e.preventDefault();
     }, { passive: false });
 
     svg.addEventListener('touchstart', (e) => {
@@ -219,6 +219,7 @@ export function setupEventDelegation() {
         scale = newScale;
         applyTransform(false);
       } else if (e.touches.length === 1 && isDragging) {
+        e.preventDefault();
         const deltaX = e.touches[0].clientX - dragStartX;
         const deltaY = e.touches[0].clientY - dragStartY;
         translateX = initialTranslateX + deltaX;
@@ -280,16 +281,7 @@ export function setupEventDelegation() {
   function initMarketBlockNumbers() {
     const svg = document.getElementById('marketSvg');
     if (!svg) return;
-    const rects = Array.from(svg.querySelectorAll('rect'));
-    const sorted = rects.slice().sort((a, b) => {
-      const ay = parseFloat(a.getAttribute('y'));
-      const by = parseFloat(b.getAttribute('y'));
-      const ax = parseFloat(a.getAttribute('x'));
-      const bx = parseFloat(b.getAttribute('x'));
-      if (ay !== by) return ay - by;
-      return ax - bx;
-    });
-    sorted.forEach((rect, i) => {
+    svg.querySelectorAll('rect[data-block-number]').forEach((rect) => {
       const x = parseFloat(rect.getAttribute('x'));
       const y = parseFloat(rect.getAttribute('y'));
       const w = parseFloat(rect.getAttribute('width'));
@@ -302,7 +294,7 @@ export function setupEventDelegation() {
       text.setAttribute('font-size', '36');
       text.setAttribute('fill', '#6b7280');
       text.setAttribute('pointer-events', 'none');
-      text.textContent = i + 1;
+      text.textContent = rect.getAttribute('data-block-number');
       svg.appendChild(text);
     });
   }
