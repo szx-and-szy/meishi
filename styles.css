@@ -584,6 +584,7 @@ menu {
   justify-content: center;
   min-height: 60vh;
   overflow: hidden;
+  touch-action: none;
 }
 .market-zoom-controls {
   position: fixed;
