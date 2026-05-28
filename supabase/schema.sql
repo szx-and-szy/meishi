@@ -36,7 +36,7 @@ create table if not exists public.user_penalty_logs (
 create table if not exists public.merchants (
   id uuid primary key default gen_random_uuid(),
   name text not null check (char_length(name) between 1 and 20),
-  location text not null check (location in ('南苑一楼', '南苑二楼', '南苑三楼', '北苑一楼', '北苑二楼', '北苑三楼', '北苑侧楼', '青春集市')),
+  location text not null check (location in ('南苑一楼', '南苑二楼', '南苑三楼', '北苑一楼', '北苑二楼', '北苑三楼', '北苑侧楼', '青春集市', '汤和路（东门向北）', '毓秀餐厅', '大学城')),
   cover_image_url text,
   description text,
   status public.merchant_status not null default 'pending',
@@ -154,6 +154,7 @@ create or replace function public.current_app_role()
 returns public.app_role
 language sql
 stable
+security definer
 as $$
   select coalesce((select role from public.users where id = auth.uid()), 'user'::public.app_role);
 $$;
@@ -162,6 +163,7 @@ create or replace function public.is_admin()
 returns boolean
 language sql
 stable
+security definer
 as $$
   select public.current_app_role() in ('admin', 'super_admin');
 $$;
@@ -170,6 +172,7 @@ create or replace function public.is_super_admin()
 returns boolean
 language sql
 stable
+security definer
 as $$
   select public.current_app_role() = 'super_admin';
 $$;
@@ -235,6 +238,11 @@ alter table public.feedbacks enable row level security;
 alter table public.audit_logs enable row level security;
 alter table public.system_settings enable row level security;
 
+create view public.user_profiles as
+select id, nickname, avatar_url from public.users;
+
+alter view public.user_profiles owner to postgres;
+
 create policy "users_self_read" on public.users
 for select using (auth.uid() = id or public.is_admin());
 
@@ -257,6 +265,9 @@ for select using (status = 'approved' or public.is_admin() or auth.uid() = creat
 create policy "users_create_merchants" on public.merchants
 for insert with check (auth.uid() = created_by);
 
+create policy "admins_delete_merchants" on public.merchants
+for delete using (public.is_admin());
+
 create policy "admins_update_merchants" on public.merchants
 for update using (public.is_admin()) with check (public.is_admin());
 
@@ -265,7 +276,7 @@ for select using (
   exists (select 1 from public.merchants m where m.id = merchant_id and (m.status = 'approved' or public.is_admin() or auth.uid() = m.created_by))
 );
 
-create policy "users_manage_merchant_images" on public.merchant_images
+create policy "admins_manage_merchant_images" on public.merchant_images
 for all using (public.is_admin()) with check (public.is_admin());
 
 create policy "public_read_dishes" on public.dishes
@@ -301,6 +312,9 @@ for select using (auth.uid() = reporter_user_id or public.is_admin());
 
 create policy "admins_manage_reports" on public.review_reports
 for update using (public.is_admin()) with check (public.is_admin());
+
+create policy "admins_delete_reports" on public.review_reports
+for delete using (public.is_admin());
 
 create policy "users_manage_feedbacks" on public.feedbacks
 for all using (auth.uid() = user_id or public.is_admin())
